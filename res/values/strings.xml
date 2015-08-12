@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+	<string name="app_name">WRU</string>
+	<string name="btn_id_hint">Click here to get id of your phone.</string>
+	<string name="btn_id_wait_id">Waiting for get Token from GCM server.\nCode will be shown here</string>
+	<string name="text_target">Target</string>
+	<string name="text_target_hint">Enter the token of your target here.</string>
+	<string name="btn_get_coordinates">Get Coordinates</string>
+	<string name="sender_id">972872290748</string>
+	<string name="api_key">AIzaSyAFHh_oU5vRXI88YKiVgrYMcI3E9q5LF9I</string>
+</resources>
