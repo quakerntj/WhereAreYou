@@ -9,10 +9,10 @@ import java.io.OutputStreamWriter;
 import java.lang.ref.WeakReference;
 import java.net.MalformedURLException;
 import java.net.URL;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import javax.net.ssl.HttpsURLConnection;
 
+import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.content.ClipData;
 import android.content.ClipDescription;
@@ -41,13 +41,8 @@ public class WRUActivity extends Activity {
 	private static final String TAG = "WRU";
 	private static final int PLAY_SERVICES_RESOLUTION_REQUEST = 9000;
 	private static final int MSG_SHOW_TOKEN = 0x0010;
-	private static final int MSG_LOAD_HISTORY = 0x0011;
-	private static final int MSG_COPY_TO_CLIPBOARD = 0X0012;
-	private static final int MSG_UPDATE_HISTORY = 0x0013;
 
 	private boolean mTokenOkay = false;
-	private AtomicInteger msgId = new AtomicInteger();
-	private GoogleCloudMessaging mGCM;
 
 	private String getToken() {
 		SharedPreferences sp = getSharedPreferences("WRU", Context.MODE_PRIVATE);
@@ -71,6 +66,7 @@ public class WRUActivity extends Activity {
 		return token;
 	}
 
+	@SuppressLint("HandlerLeak")
 	private class MyHandler extends Handler {
 		private WeakReference<WRUActivity> mWeakContext;
 
@@ -103,9 +99,6 @@ public class WRUActivity extends Activity {
 				mTokenOkay = true;
 				
 				code.setEnabled(true);
-			} else if (msg.what == MSG_COPY_TO_CLIPBOARD) {
-			} else if (msg.what == MSG_UPDATE_HISTORY) {
-			} else if (msg.what == MSG_LOAD_HISTORY) {
 			}
 		}
 	};
@@ -117,7 +110,6 @@ public class WRUActivity extends Activity {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_wru);
 		mHandler = new MyHandler(this);
-		mGCM = GoogleCloudMessaging.getInstance(this);
 		findViewById(R.id.btnGetToken).setEnabled(false);
 	}
 
@@ -138,7 +130,7 @@ public class WRUActivity extends Activity {
 
 	private void emailAccess(String token) {
 		Intent intent = new Intent(Intent.ACTION_VIEW);
-		String subject = "How to use GCMTest";
+		String subject = "How to use WRU (Where are you)";
 		String body = "Dear User,\n\nThis mail will show you how to use this in your desktop or other device.\n" +
 				"At first, your token is in the following line:\n\n" + token + "\n\n";
 		Uri data = Uri.parse("mailto:?subject=" + subject + "&body=" + body);
@@ -225,24 +217,24 @@ public class WRUActivity extends Activity {
 				data = sb.toString();
 			}
 			
-			//Write         
+			//Write 
 			OutputStream os = urlConnection.getOutputStream();
 			BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(os, "UTF-8"));
 			writer.write(data);
 			writer.close();
 			os.close();
 
-			//Read      
+			//Read
 			BufferedReader br = new BufferedReader(new InputStreamReader(urlConnection.getInputStream(),"UTF-8"));
 
 			String line = null; 
-			StringBuilder sb = new StringBuilder();         
+			StringBuilder sb = new StringBuilder();
 
-			while ((line = br.readLine()) != null) {  
-			     sb.append(line); 
-			}       
+			while ((line = br.readLine()) != null) {
+				sb.append(line);
+			}
 
-			br.close();  
+			br.close();
 			String result = sb.toString();
 			Log.d(TAG, result);
 		} catch (MalformedURLException e) {
@@ -253,7 +245,6 @@ public class WRUActivity extends Activity {
 	}
 	
 	public void onRequestCoordinates(View v) {
-		final TextView textTarget = (TextView) findViewById(R.id.textTarget);
 		new AsyncTask<Void, Integer, String>() {
 			@Override
 			protected String doInBackground(Void... params) {

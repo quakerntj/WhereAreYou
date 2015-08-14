@@ -8,9 +8,12 @@ import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.util.Calendar;
 
 import javax.net.ssl.HttpsURLConnection;
 
+import android.app.Notification;
+import android.app.NotificationManager;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
@@ -18,12 +21,15 @@ import android.content.SharedPreferences;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
+import android.media.RingtoneManager;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.IBinder;
 import android.os.Message;
+import android.os.PowerManager;
+import android.text.format.DateFormat;
 import android.util.Log;
 /**
  * Because the MyGcmListenerService is not sticky.  Listening for location update will fail.
@@ -32,12 +38,14 @@ import android.util.Log;
  */
 public class LocationUpdateService extends Service implements Handler.Callback, LocationListener {
 	private static final String TAG = "WRU";
+	private static final boolean DEBUG = false;
 
 	private static final int MSG_GET_LOCATION = 0x0010;
 	private static final int MSG_REPORT_LOCATION = 0x0011;
 	private static final int MSG_STOP_SELF = 0x0012;
 
 	private static final long WAIT_LOCATION_AFTER_DELAY = 5000;  // in millisecond
+	private static final long STOP_SELF_DELAY = 300000;  // in millisecond
 
 	private HandlerThread mThread = null;
 	private Handler mHandler = null;
@@ -45,13 +53,15 @@ public class LocationUpdateService extends Service implements Handler.Callback, 
 	private Location mLocation = null;
 	private long mStartTime = 0;
 
+	PowerManager.WakeLock mWakelock;
+	
 	private String getTarget() {
 		SharedPreferences sp = getSharedPreferences("WRU", Context.MODE_PRIVATE);
 		return sp.getString("target", "");
 	}
 
 	private void sendMessage(Location l) {
-		//Log.d(TAG, "sendMessage");
+		if (DEBUG) Log.d(TAG, "sendMessage");
 		try {
 			URL url = new URL("https://gcm-http.googleapis.com/gcm/send");
 			HttpsURLConnection urlConnection = (HttpsURLConnection) url.openConnection();
@@ -90,7 +100,7 @@ public class LocationUpdateService extends Service implements Handler.Callback, 
 
 			br.close();  
 			String result = sb.toString();
-			//Log.d(TAG, result);
+			if (DEBUG) Log.d(TAG, result);
 			stopSelf();
 		} catch (MalformedURLException e) {
 			e.printStackTrace();
@@ -100,7 +110,7 @@ public class LocationUpdateService extends Service implements Handler.Callback, 
 	}
 	
 	private void doReportLocation(Location l) {
-		//Log.d(TAG, "doReportLocation");
+		if (DEBUG) Log.d(TAG, "doReportLocation");
 		new AsyncTask<Location, Integer, String>() {
 			@Override
 			protected String doInBackground(Location... params) {
@@ -111,14 +121,14 @@ public class LocationUpdateService extends Service implements Handler.Callback, 
 
 			@Override
 			protected void onPostExecute(String msg) {
-				//Log.d(TAG, msg);
+				if (DEBUG) Log.d(TAG, msg);
 			}
 		}.execute(l, null, null);
 	}
 
 	@Override
 	public boolean handleMessage(Message msg) {
-		//Log.d(TAG, "Message what: " + msg.what);
+		if (DEBUG) Log.d(TAG, "Message what: " + msg.what);
 		int what = msg.what;
 		LocationManager mLocationManager = (LocationManager)
 				getSystemService(Context.LOCATION_SERVICE);
@@ -129,7 +139,7 @@ public class LocationUpdateService extends Service implements Handler.Callback, 
 			return true;
 		case MSG_GET_LOCATION:
 			mLocationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 1, 4, this);
-			mHandler.sendEmptyMessageDelayed(MSG_STOP_SELF, 360000);
+			mHandler.sendEmptyMessageDelayed(MSG_STOP_SELF, STOP_SELF_DELAY);
 			return true;
 		case MSG_STOP_SELF:
 			mLocationManager.removeUpdates(this);
@@ -147,11 +157,11 @@ public class LocationUpdateService extends Service implements Handler.Callback, 
 
 	@Override
 	public void onLocationChanged(Location location) {
-		//Log.d(TAG, location.toString());
+		if (DEBUG) Log.d(TAG, location.toString());
 		mLocation = location;
 		if (mStartTime == 0) {
 			// In order to get stable location, wait for a while.
-			long mStartTime = System.currentTimeMillis();
+			mStartTime = System.currentTimeMillis();
 			Message msg = Message.obtain(mHandler, MSG_REPORT_LOCATION, 
 					new Location(location));
 			mHandler.sendMessageDelayed(msg, WAIT_LOCATION_AFTER_DELAY);
@@ -175,10 +185,31 @@ public class LocationUpdateService extends Service implements Handler.Callback, 
 		return null;
 	}
 
+	private void showNotification() {
+		long [] pat = {0, 1000, 1000, 300, 200, 1000, 1500};
+		new Intent();
+		NotificationManager nm = (NotificationManager)
+					getSystemService(Context.NOTIFICATION_SERVICE);
+
+		Calendar cal = Calendar.getInstance();
+		java.text.DateFormat df = DateFormat.getTimeFormat(this);
+		Notification notification = new Notification.Builder(this).setContentTitle("Target is looking for you")
+	        .setContentText("At " + df.format(cal.getTime()))
+	        .setSmallIcon(R.drawable.ic_launcher)
+	        .setVibrate(pat)
+	        .setSound(RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE))
+	        .setAutoCancel(true)
+	        .build();
+
+	    nm.notify(0, notification);
+	}
+	
 	@Override
     public int onStartCommand(Intent intent, int flags, int startId) {
 		super.onStartCommand(intent, flags, startId);
-		//Log.d(TAG, "Service has received start id " + startId + ": " + intent);
+		PowerManager pm = (PowerManager) getSystemService(Context.POWER_SERVICE);
+
+		if (DEBUG) Log.d(TAG, "Service has received start id " + startId + ": " + intent);
 
         // We want this service to continue running until it is explicitly
         // stopped, so return sticky.
@@ -187,22 +218,31 @@ public class LocationUpdateService extends Service implements Handler.Callback, 
         		return START_STICKY;
     		mThread = new HandlerThread("H1");
     		mThread.start();
-    		//Log.d(TAG, "thread started");
+    		if (DEBUG) Log.d(TAG, "thread started");
     		mHandler = new Handler(mThread.getLooper(), this);
     		mHandler.sendEmptyMessage(MSG_GET_LOCATION);
     		mStartTime = 0;
-		}
+
+    		// Need keep wake until the location is updated.
+    		mWakelock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "WRU");
+    		mWakelock.acquire();
+
+    		showNotification();
+        }
         return START_STICKY;
     }
 
 	@Override
 	public void onDestroy() {
-		//Log.d(TAG, "onDestroy()");
+		if (DEBUG) Log.d(TAG, "onDestroy()");
         synchronized (mLock) {
     		mHandler = null;
     		if (mThread != null)
     			mThread.quit();
 			mThread = null;
+			if (mWakelock != null)
+				mWakelock.release();
+			mWakelock = null;
         }
 	}
 }
