@@ -52,5 +52,37 @@
 
         <requestFocus />
     </Button>
+	<LinearLayout
+		android:layout_width="match_parent"
+		android:layout_height="wrap_content"
+		android:orientation="horizontal" >
+
+		<EditText
+		    android:id="@+id/editText1"
+		    android:layout_width="match_parent"
+		    android:layout_height="wrap_content"
+		    android:ems="10" />
+
+		<ImageButton
+		    android:id="@+id/sendBtn"
+		    style="?android:attr/buttonStyleSmall"
+		    android:layout_width="wrap_content"
+		    android:layout_height="wrap_content"
+		    android:contentDescription="send"
+		    android:onClick="onSend"
+		    android:src="@android:drawable/ic_menu_send" />
+
+	</LinearLayout>
+
+	<ScrollView
+		android:layout_width="match_parent"
+		android:layout_height="match_parent" >
+		<LinearLayout
+			android:id="@+id/linearLog"
+			android:layout_width="match_parent"
+			android:layout_height="match_parent"
+			android:orientation="vertical" >
+		</LinearLayout>
+	</ScrollView>
 
 </LinearLayout>
