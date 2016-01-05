@@ -29,6 +29,7 @@ public class MyGcmListenerService extends GcmListenerService {
 		// TODO use pending intent
 		Notification.Builder builder = new Notification.Builder(this);
 		Notification n = builder.setContentTitle("Your target is Here")
+				.setSmallIcon(R.drawable.ic_launcher)
 				.setContentText(uriBegin)
 				.build();
 		NotificationManager nm = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
@@ -42,12 +43,16 @@ public class MyGcmListenerService extends GcmListenerService {
 		Log.d(TAG, "onMessageReceived");
 		String action = data.getString("action");
 		String returnAddr = data.getString("return_address");
-		if (action == null || returnAddr == null || returnAddr.isEmpty())
+		if (action == null)
 			return;
 		Log.d(TAG, "action: " + action);
 
 		if (action.equals("request location")) {
 			Log.d(TAG, "start service");
+			if (returnAddr == null || returnAddr.isEmpty()) {
+				Log.e(TAG, "Lack return address");
+				return;
+			}
 			Intent intent = new Intent(this, LocationUpdateService.class);
 			intent.putExtra("return_address", returnAddr);
 			startService(intent);
@@ -55,8 +60,12 @@ public class MyGcmListenerService extends GcmListenerService {
 			showLocation(data);
 		} else if (action.equals("report starting")) {
 			Notification.Builder builder = new Notification.Builder(this);
-			Notification n = builder.setContentTitle("WRU").setContentText("Your target is locating").build();
+			Notification n = builder.setContentTitle("Your request was delivered")
+					.setSmallIcon(R.drawable.ic_launcher)
+					.setAutoCancel(true)
+					.setContentText("Target is locating").build();
 			NotificationManager nm = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+			nm.cancel(0);
 			nm.notify(0, n);
 		}
 	}

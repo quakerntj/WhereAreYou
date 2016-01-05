@@ -38,12 +38,10 @@ import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
-import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.LinearLayout;
-import android.widget.TextView;
 
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.GooglePlayServicesUtil;
@@ -54,6 +52,7 @@ public class WRUActivity extends Activity {
 	private static final String TAG = "WRU";
 	private static final int PLAY_SERVICES_RESOLUTION_REQUEST = 9000;
 	private static final int MSG_SHOW_TOKEN = 0x0010;
+	private static final String SP_WRU_ME = "ME";
 	private static final String SP_WRU = "WRU";
 	private static final String SP_MY_TOKEN = "my_token";
 	private static final String SP_TARGET_NUMBERS = "target_numbers";
@@ -67,7 +66,7 @@ public class WRUActivity extends Activity {
 	private LinearLayout mLinearLog;
 
 	private String getMyToken() {
-		SharedPreferences sp = getSharedPreferences(SP_WRU, Context.MODE_PRIVATE);
+		SharedPreferences sp = getSharedPreferences(SP_WRU_ME, Context.MODE_PRIVATE);
 		String token = sp.getString(SP_MY_TOKEN, "");
 		return token;
 	}
@@ -131,6 +130,7 @@ public class WRUActivity extends Activity {
 		SharedPreferences sp = getSharedPreferences(SP_WRU, Context.MODE_PRIVATE);
 		ArrayList<Pair<String, String>> list = new ArrayList<Pair<String, String>>();
 		final int num = sp.getInt(SP_TARGET_NUMBERS, 0);
+
 		for (int i = 0; i < num; i++) {
 			String name = sp.getString(SP_TARGET_NAME + i, "");
 			String token = sp.getString(SP_TARGET_TOKEN + i, "");
@@ -155,9 +155,9 @@ public class WRUActivity extends Activity {
 	}
 
 	private void logText(String text, int action) {
-		TextView txt = new TextView(this);
-		txt.setText(text);
-		mLinearLog.addView(txt);
+		//TextView txt = new TextView(this);
+		//txt.setText(text);
+		//mLinearLog.addView(txt);
 	}
 	
 	@SuppressLint("HandlerLeak")
@@ -188,7 +188,7 @@ public class WRUActivity extends Activity {
 				cb.setPrimaryClip(ClipData.newPlainText(
 						ClipDescription.MIMETYPE_TEXT_PLAIN, token));
 
-				SharedPreferences sp = getSharedPreferences(SP_WRU, Context.MODE_PRIVATE);
+				SharedPreferences sp = getSharedPreferences(SP_WRU_ME, Context.MODE_PRIVATE);
 				sp.edit().putString(SP_MY_TOKEN, token).commit();
 				mTokenOkay = true;
 				

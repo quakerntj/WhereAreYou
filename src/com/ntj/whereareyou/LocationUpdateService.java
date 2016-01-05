@@ -40,7 +40,7 @@ import android.util.Log;
  */
 public class LocationUpdateService extends Service implements Handler.Callback, LocationListener {
 	private static final String TAG = "WRU";
-	private static final boolean DEBUG = false;
+	private static final boolean DEBUG = true;
 
 	private static final int MSG_GET_LOCATION = 0x0010;
 	private static final int MSG_REPORT_LOCATION = 0x0011;
@@ -54,7 +54,7 @@ public class LocationUpdateService extends Service implements Handler.Callback, 
 	private Object mLock = new Object();
 	private Location mLocation = null;
 	private long mStartTime = 0;
-	private String mReturnAddress;
+	private String mReturnAddress = null;
 
 	PowerManager.WakeLock mWakelock;
 	
@@ -67,7 +67,6 @@ public class LocationUpdateService extends Service implements Handler.Callback, 
 			urlConnection.setRequestProperty("Content-Type", "application/json");
 			urlConnection.setRequestProperty("Authorization", "key=" + getString(R.string.api_key));
 			urlConnection.setRequestMethod("POST");
-
 
 			//Write
 			OutputStream os = urlConnection.getOutputStream();
@@ -95,6 +94,36 @@ public class LocationUpdateService extends Service implements Handler.Callback, 
 			e.printStackTrace();
 		}
 	}
+
+	private void doReportStart() {
+		if (DEBUG) Log.d(TAG, "doReportLocation");
+		new AsyncTask<Location, Integer, String>() {
+			@Override
+			protected String doInBackground(Location... params) {
+				String msg = "done";
+				String data = "";
+				try {
+					JSONObject root = new JSONObject();
+					root.put("to", mReturnAddress);
+					JSONObject jdata = new JSONObject();
+					jdata.put("action", "report starting");
+					jdata.put("priority", 10);
+					jdata.put("delay_while_idle", false);
+					root.put("data", jdata);
+					data = root.toString();
+				} catch (JSONException e) {
+					e.printStackTrace();
+				}
+				sendMessage(data);
+				return msg;
+			}
+
+			@Override
+			protected void onPostExecute(String msg) {
+				if (DEBUG) Log.d(TAG, msg);
+			}
+		}.execute(null, null, null);
+	}
 	
 	private void doReportLocation(Location l) {
 		if (DEBUG) Log.d(TAG, "doReportLocation");
@@ -111,7 +140,7 @@ public class LocationUpdateService extends Service implements Handler.Callback, 
 						JSONObject jdata = new JSONObject();
 						jdata.put("action", "report location");
 						jdata.put("latitude", l.getLatitude());
-						jdata.put("latitude", l.getLongitude());
+						jdata.put("longitude", l.getLongitude());
 						jdata.put("priority", 10);
 						jdata.put("delay_while_idle", false);
 	
@@ -202,7 +231,8 @@ public class LocationUpdateService extends Service implements Handler.Callback, 
 
 		Calendar cal = Calendar.getInstance();
 		java.text.DateFormat df = DateFormat.getTimeFormat(this);
-		Notification notification = new Notification.Builder(this).setContentTitle("Target is looking for you")
+		Notification notification = new Notification.Builder(this)
+			.setContentTitle("Target is looking for you")
 	        .setContentText("At " + df.format(cal.getTime()))
 	        .setSmallIcon(R.drawable.ic_launcher)
 	        .setVibrate(pat)
@@ -220,8 +250,10 @@ public class LocationUpdateService extends Service implements Handler.Callback, 
 
 		if (DEBUG) Log.d(TAG, "Service has received start id " + startId + ": " + intent);
 		mReturnAddress = intent.getStringExtra("return_address");
-		if (mReturnAddress == null || mReturnAddress.isEmpty())
+		if (mReturnAddress == null || mReturnAddress.isEmpty()) {
+			Log.d(TAG, "Lack return address");
 			return START_NOT_STICKY;
+		}
 
         // We want this service to continue running until it is explicitly
         // stopped, so return sticky.
@@ -240,6 +272,7 @@ public class LocationUpdateService extends Service implements Handler.Callback, 
     		mWakelock.acquire();
 
     		showNotification();
+    		doReportStart();
         }
         return START_STICKY;
     }
