@@ -12,12 +12,14 @@ import java.util.Calendar;
 
 import javax.net.ssl.HttpsURLConnection;
 
+import org.json.JSONException;
+import org.json.JSONObject;
+
 import android.app.Notification;
 import android.app.NotificationManager;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
-import android.content.SharedPreferences;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
@@ -52,15 +54,11 @@ public class LocationUpdateService extends Service implements Handler.Callback, 
 	private Object mLock = new Object();
 	private Location mLocation = null;
 	private long mStartTime = 0;
+	private String mReturnAddress;
 
 	PowerManager.WakeLock mWakelock;
 	
-	private String getTarget() {
-		SharedPreferences sp = getSharedPreferences("WRU", Context.MODE_PRIVATE);
-		return sp.getString("target", "");
-	}
-
-	private void sendMessage(Location l) {
+	private void sendMessage(String data) {
 		if (DEBUG) Log.d(TAG, "sendMessage");
 		try {
 			URL url = new URL("https://gcm-http.googleapis.com/gcm/send");
@@ -70,16 +68,6 @@ public class LocationUpdateService extends Service implements Handler.Callback, 
 			urlConnection.setRequestProperty("Authorization", "key=" + getString(R.string.api_key));
 			urlConnection.setRequestMethod("POST");
 
-			String data = "";
-			if (l != null) {
-				StringBuilder sb = new StringBuilder("");
-				sb.append("{\"to\":\"").append(getTarget());
-				sb.append("\", \"data\":{\"action\":\"report location\",");
-				sb.append("\"latitude\":\"").append(l.getLatitude()).append("\",");
-				sb.append("\"longitude\":\"").append(l.getLongitude()).append("\"}");
-				sb.append(",\"priority\":10,\"delay_while_idle\":false}");
-				data = sb.toString();
-			}
 
 			//Write
 			OutputStream os = urlConnection.getOutputStream();
@@ -101,7 +89,6 @@ public class LocationUpdateService extends Service implements Handler.Callback, 
 			br.close();  
 			String result = sb.toString();
 			if (DEBUG) Log.d(TAG, result);
-			stopSelf();
 		} catch (MalformedURLException e) {
 			e.printStackTrace();
 		} catch (IOException e) {
@@ -114,8 +101,30 @@ public class LocationUpdateService extends Service implements Handler.Callback, 
 		new AsyncTask<Location, Integer, String>() {
 			@Override
 			protected String doInBackground(Location... params) {
-				String msg = "";
-				sendMessage(params[0]);
+				String msg = "Done";
+				Location l = params[0];
+				String data = "";
+				if (l != null) {
+					try {
+						JSONObject root = new JSONObject();
+						root.put("to", mReturnAddress);
+						JSONObject jdata = new JSONObject();
+						jdata.put("action", "report location");
+						jdata.put("latitude", l.getLatitude());
+						jdata.put("latitude", l.getLongitude());
+						jdata.put("priority", 10);
+						jdata.put("delay_while_idle", false);
+	
+						root.put("data", jdata);
+						data = root.toString();
+					} catch (JSONException e) {
+						e.printStackTrace();
+						stopSelf();
+						return "Fail at JSON";
+					}
+				}
+				sendMessage(data);
+				stopSelf();
 				return msg;
 			}
 
@@ -210,6 +219,9 @@ public class LocationUpdateService extends Service implements Handler.Callback, 
 		PowerManager pm = (PowerManager) getSystemService(Context.POWER_SERVICE);
 
 		if (DEBUG) Log.d(TAG, "Service has received start id " + startId + ": " + intent);
+		mReturnAddress = intent.getStringExtra("return_address");
+		if (mReturnAddress == null || mReturnAddress.isEmpty())
+			return START_NOT_STICKY;
 
         // We want this service to continue running until it is explicitly
         // stopped, so return sticky.

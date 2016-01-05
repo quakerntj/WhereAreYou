@@ -1,0 +1,8 @@
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools" >
+    <item
+       	android:id="@+id/action_get_id"
+       	android:title="Get Your ID"
+       	android:showAsAction="never"
+       	android:orderInCategory="100" />
+</menu>

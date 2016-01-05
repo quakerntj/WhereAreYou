@@ -1,0 +1,33 @@
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+	android:layout_width="match_parent"
+	android:layout_height="wrap_content"
+	android:orientation="horizontal" >
+
+	<EditText
+		android:id="@+id/textTarget"
+		android:layout_width="0dp"
+	   	android:layout_weight="1"
+		android:layout_height="wrap_content"
+		android:hint="@string/text_target_hint"
+		android:inputType="text"
+		android:maxLines="1"
+		android:selectAllOnFocus="true" />
+
+	<Button
+	   	android:id="@+id/btnTarget"
+	   	android:visibility="gone"
+	   	android:layout_width="0dp"
+	   	android:layout_weight="1"
+	   	android:layout_height="wrap_content"
+		android:text="@string/btn_get_coordinates"
+	   	android:onClick="onRequestCoordinates" />
+	<ImageButton
+		android:id="@+id/btnEdit"
+		style="?android:attr/buttonStyleSmall"
+		android:layout_width="wrap_content"
+		android:layout_height="wrap_content"
+		android:contentDescription="@android:string/paste"
+		android:onClick="onEditTarget"
+		android:src="@android:drawable/ic_input_add" />
+</LinearLayout>
+	
