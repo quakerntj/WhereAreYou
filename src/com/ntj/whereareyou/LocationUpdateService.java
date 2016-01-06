@@ -1,38 +1,22 @@
 package com.ntj.whereareyou;
 
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.OutputStream;
-import java.io.OutputStreamWriter;
-import java.net.MalformedURLException;
-import java.net.URL;
-import java.util.Calendar;
-
-import javax.net.ssl.HttpsURLConnection;
-
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import android.app.Notification;
-import android.app.NotificationManager;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
-import android.media.RingtoneManager;
-import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.IBinder;
 import android.os.Message;
 import android.os.PowerManager;
-import android.text.format.DateFormat;
 import android.util.Log;
+
 /**
  * Because the MyGcmListenerService is not sticky.  Listening for location update will fail.
  * Thus start this LocationUpdateService for background process.
@@ -46,141 +30,80 @@ public class LocationUpdateService extends Service implements Handler.Callback, 
 	private static final int MSG_REPORT_LOCATION = 0x0011;
 	private static final int MSG_STOP_SELF = 0x0012;
 
-	private static final long WAIT_LOCATION_AFTER_DELAY = 5000;  // in millisecond
-	private static final long STOP_SELF_DELAY = 300000;  // in millisecond
+	private static final long WAIT_LOCATION_AFTER_DELAY = 1000;  // in millisecond
+	private static final long STOP_SELF_DELAY = 300000;  // in millisecond, 5min
 
 	private HandlerThread mThread = null;
 	private Handler mHandler = null;
 	private Object mLock = new Object();
-	private Location mLocation = null;
 	private long mStartTime = 0;
 	private String mReturnAddress = null;
+	private int mPrecise = 1;
+	private int mTrack = 1;
+	private String mCaller = "Target";
+	private Location mLocation = null;
 
 	PowerManager.WakeLock mWakelock;
 	
-	private void sendMessage(String data) {
-		if (DEBUG) Log.d(TAG, "sendMessage");
+	private void doReportStart() {
+		if (DEBUG) Log.d(TAG, "doReportLocation");
 		try {
-			URL url = new URL("https://gcm-http.googleapis.com/gcm/send");
-			HttpsURLConnection urlConnection = (HttpsURLConnection) url.openConnection();
-			urlConnection.setDoOutput(true);
-			urlConnection.setRequestProperty("Content-Type", "application/json");
-			urlConnection.setRequestProperty("Authorization", "key=" + getString(R.string.api_key));
-			urlConnection.setRequestMethod("POST");
-
-			//Write
-			OutputStream os = urlConnection.getOutputStream();
-			BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(os, "UTF-8"));
-			writer.write(data);
-			writer.close();
-			os.close();
-
-			//Read
-			BufferedReader br = new BufferedReader(new InputStreamReader(urlConnection.getInputStream(),"UTF-8"));
-
-			String line = null; 
-			StringBuilder sb = new StringBuilder();         
-
-			while ((line = br.readLine()) != null) {  
-			     sb.append(line); 
-			}       
-
-			br.close();  
-			String result = sb.toString();
-			if (DEBUG) Log.d(TAG, result);
-		} catch (MalformedURLException e) {
-			e.printStackTrace();
-		} catch (IOException e) {
+			JSONObject jdata = new JSONObject();
+			jdata.put("action", "report starting")
+				.put("priority", 10)
+				.put("reporter", Utility.getMyToken(this))
+				.put("delay_while_idle", false);
+			JSONObject root = new JSONObject();
+			root.put("to", mReturnAddress);
+			root.put("data", jdata);
+			Utility.sendMessageAsync(this, root.toString());
+		} catch (JSONException e) {
 			e.printStackTrace();
 		}
 	}
 
-	private void doReportStart() {
-		if (DEBUG) Log.d(TAG, "doReportLocation");
-		new AsyncTask<Location, Integer, String>() {
-			@Override
-			protected String doInBackground(Location... params) {
-				String msg = "done";
-				String data = "";
-				try {
-					JSONObject root = new JSONObject();
-					root.put("to", mReturnAddress);
-					JSONObject jdata = new JSONObject();
-					jdata.put("action", "report starting");
-					jdata.put("priority", 10);
-					jdata.put("delay_while_idle", false);
-					root.put("data", jdata);
-					data = root.toString();
-				} catch (JSONException e) {
-					e.printStackTrace();
-				}
-				sendMessage(data);
-				return msg;
-			}
-
-			@Override
-			protected void onPostExecute(String msg) {
-				if (DEBUG) Log.d(TAG, msg);
-			}
-		}.execute(null, null, null);
-	}
-	
 	private void doReportLocation(Location l) {
 		if (DEBUG) Log.d(TAG, "doReportLocation");
-		new AsyncTask<Location, Integer, String>() {
-			@Override
-			protected String doInBackground(Location... params) {
-				String msg = "Done";
-				Location l = params[0];
-				String data = "";
-				if (l != null) {
-					try {
-						JSONObject root = new JSONObject();
-						root.put("to", mReturnAddress);
-						JSONObject jdata = new JSONObject();
-						jdata.put("action", "report location");
-						jdata.put("latitude", l.getLatitude());
-						jdata.put("longitude", l.getLongitude());
-						jdata.put("priority", 10);
-						jdata.put("delay_while_idle", false);
-	
-						root.put("data", jdata);
-						data = root.toString();
-					} catch (JSONException e) {
-						e.printStackTrace();
-						stopSelf();
-						return "Fail at JSON";
-					}
-				}
-				sendMessage(data);
-				stopSelf();
-				return msg;
-			}
-
-			@Override
-			protected void onPostExecute(String msg) {
-				if (DEBUG) Log.d(TAG, msg);
-			}
-		}.execute(l, null, null);
+		try {
+			JSONObject jdata = new JSONObject();
+			jdata.put("action", "report location")
+				.put("latitude", l.getLatitude())
+				.put("longitude", l.getLongitude())
+				.put("reporter", Utility.getMyToken(this))
+				.put("priority", 10)
+				.put("delay_while_idle", false);
+			JSONObject root = new JSONObject();
+			root.put("to", mReturnAddress);
+			root.put("data", jdata);
+			Utility.sendMessageAsync(this, root.toString());
+		} catch (JSONException e) {
+			e.printStackTrace();
+			stopSelf();
+		}
 	}
 
 	@Override
 	public boolean handleMessage(Message msg) {
 		if (DEBUG) Log.d(TAG, "Message what: " + msg.what);
 		int what = msg.what;
-		LocationManager mLocationManager = (LocationManager)
+		LocationManager locationManager = (LocationManager)
 				getSystemService(Context.LOCATION_SERVICE);
 		switch (what) {
 		case MSG_REPORT_LOCATION:
-			mLocationManager.removeUpdates(this);
-			doReportLocation(mLocation);
+			if (DEBUG) Log.d(TAG, "Track left " + mTrack);
+			if (mLocation != null)
+				doReportLocation(mLocation);
+			if (--mTrack <= 0) {
+				locationManager.removeUpdates(this);
+				stopSelf();
+			}
 			return true;
 		case MSG_GET_LOCATION:
-			mLocationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 1, 4, this);
+			locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 1, 4, this);
 			mHandler.sendEmptyMessageDelayed(MSG_STOP_SELF, STOP_SELF_DELAY);
 			return true;
 		case MSG_STOP_SELF:
-			mLocationManager.removeUpdates(this);
+			locationManager.removeUpdates(this);
 	        synchronized (mLock) {
 	    		mHandler = null;
 	    		if (mThread != null)
@@ -196,13 +119,29 @@ public class LocationUpdateService extends Service implements Handler.Callback, 
 	@Override
 	public void onLocationChanged(Location location) {
 		if (DEBUG) Log.d(TAG, location.toString());
-		mLocation = location;
+		if (location == null) {
+			Log.d(TAG, "Location is null");
+			return;
+		}
 		if (mStartTime == 0) {
-			// In order to get stable location, wait for a while.
 			mStartTime = System.currentTimeMillis();
-			Message msg = Message.obtain(mHandler, MSG_REPORT_LOCATION, 
-					new Location(location));
-			mHandler.sendMessageDelayed(msg, WAIT_LOCATION_AFTER_DELAY);
+			Message msg = Message.obtain(mHandler, MSG_REPORT_LOCATION);
+			mHandler.sendMessage(msg);
+			mHandler.sendEmptyMessageDelayed(MSG_STOP_SELF, mTrack * mPrecise * 1000);
+		} else {
+			mLocation = new Location(location);
+			long current = System.currentTimeMillis();
+			long elapse = current - mStartTime;
+			if (elapse > (mPrecise * 1000)) {
+				mStartTime = current;
+				Message msg = Message.obtain(mHandler, MSG_REPORT_LOCATION);
+				mHandler.removeMessages(MSG_REPORT_LOCATION);
+				mHandler.sendMessage(msg);
+			} else {
+				Message msg = Message.obtain(mHandler, MSG_REPORT_LOCATION);
+				mHandler.removeMessages(MSG_REPORT_LOCATION);
+				mHandler.sendMessageDelayed(msg, mPrecise * 1000 - elapse);
+			}
 		}
 	}
 
@@ -223,26 +162,6 @@ public class LocationUpdateService extends Service implements Handler.Callback, 
 		return null;
 	}
 
-	private void showNotification() {
-		long [] pat = {0, 1000, 1000, 300, 200, 1000, 1500};
-		new Intent();
-		NotificationManager nm = (NotificationManager)
-					getSystemService(Context.NOTIFICATION_SERVICE);
-
-		Calendar cal = Calendar.getInstance();
-		java.text.DateFormat df = DateFormat.getTimeFormat(this);
-		Notification notification = new Notification.Builder(this)
-			.setContentTitle("Target is looking for you")
-	        .setContentText("At " + df.format(cal.getTime()))
-	        .setSmallIcon(R.drawable.ic_launcher)
-	        .setVibrate(pat)
-	        .setSound(RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE))
-	        .setAutoCancel(true)
-	        .build();
-
-	    nm.notify(0, notification);
-	}
-	
 	@Override
     public int onStartCommand(Intent intent, int flags, int startId) {
 		super.onStartCommand(intent, flags, startId);
@@ -255,23 +174,36 @@ public class LocationUpdateService extends Service implements Handler.Callback, 
 			return START_NOT_STICKY;
 		}
 
-        // We want this service to continue running until it is explicitly
+		mPrecise = intent.getIntExtra("precise", 10);
+		mTrack = intent.getIntExtra("track", 1);
+		mCaller = intent.getStringExtra("caller");
+
+		if (mPrecise <= 0)
+			mPrecise = 1;
+		if (mPrecise >= 20)
+			mPrecise = 20;
+		if (mTrack <= 0)
+			mTrack = 1;
+		else if ((mTrack * mPrecise) > 240)
+			mTrack = 240 / mPrecise;
+		if (DEBUG) Log.d(TAG, "Precise " + mPrecise + ", Track " + mTrack);
+
+		// We want this service to continue running until it is explicitly
         // stopped, so return sticky.
         synchronized (mLock) {
         	if (mThread != null)
         		return START_STICKY;
     		mThread = new HandlerThread("H1");
     		mThread.start();
+    		mStartTime = 0;
     		if (DEBUG) Log.d(TAG, "thread started");
     		mHandler = new Handler(mThread.getLooper(), this);
     		mHandler.sendEmptyMessage(MSG_GET_LOCATION);
-    		mStartTime = 0;
 
     		// Need keep wake until the location is updated.
     		mWakelock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "WRU");
     		mWakelock.acquire();
 
-    		showNotification();
     		doReportStart();
         }
         return START_STICKY;

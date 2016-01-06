@@ -1,17 +1,8 @@
 package com.ntj.whereareyou;
 
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
 import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.OutputStream;
-import java.io.OutputStreamWriter;
 import java.lang.ref.WeakReference;
-import java.net.MalformedURLException;
-import java.net.URL;
 import java.util.ArrayList;
-
-import javax.net.ssl.HttpsURLConnection;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -26,19 +17,17 @@ import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
-import android.content.SharedPreferences.Editor;
 import android.net.Uri;
-import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Message;
-import android.support.v4.util.Pair;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.Button;
+import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.LinearLayout;
@@ -52,98 +41,17 @@ public class WRUActivity extends Activity {
 	private static final String TAG = "WRU";
 	private static final int PLAY_SERVICES_RESOLUTION_REQUEST = 9000;
 	private static final int MSG_SHOW_TOKEN = 0x0010;
-	private static final String SP_WRU_ME = "ME";
-	private static final String SP_WRU = "WRU";
-	private static final String SP_MY_TOKEN = "my_token";
-	private static final String SP_TARGET_NUMBERS = "target_numbers";
-	private static final String SP_TARGET_TOKEN = "target_token_";
-	private static final String SP_TARGET_NAME = "target_name_";
 
 	private boolean mTokenOkay = false;
+	private boolean mPreciseChecked = true;
+	private boolean mTrackChecked = false;
 
 	private ArrayList<LinearLayout> mLinearList = new ArrayList<LinearLayout>();
 	private LinearLayout mLinearLayout;
 	private LinearLayout mLinearLog;
 
-	private String getMyToken() {
-		SharedPreferences sp = getSharedPreferences(SP_WRU_ME, Context.MODE_PRIVATE);
-		String token = sp.getString(SP_MY_TOKEN, "");
-		return token;
-	}
 
-	private void update(ArrayList<Pair<String, String>> list) {
-		final int N = list.size();
-		SharedPreferences sp = getSharedPreferences(SP_WRU, Context.MODE_PRIVATE);
-		Editor e = sp.edit();
-		e.clear();
-		e.putInt(SP_TARGET_NUMBERS, N);
-		for (int i = 0; i < N; i++) {
-			Pair<String, String> p = list.get(i);
-			e.putString(SP_TARGET_NAME + i, p.first);
-			e.putString(SP_TARGET_TOKEN + i, p.second);
-		}
-		e.commit();
-	}
-	
-	private void addTarget(String newName, String newToken) {
-		SharedPreferences sp = getSharedPreferences(SP_WRU, Context.MODE_PRIVATE);
-		ArrayList<Pair<String, String>> list = new ArrayList<Pair<String, String>>();
-		final int N = sp.getInt(SP_TARGET_NUMBERS, 0);
-		for (int i = 0; i < N; i++) {
-			String name = sp.getString(SP_TARGET_NAME + i, "");
-			String token = sp.getString(SP_TARGET_TOKEN + i, "");
-			if (token.isEmpty())
-				continue;
-			Pair<String, String> p = new Pair<String, String>(name, token);
-			list.add(p);
-		}
-		// Do add here
-		Pair<String, String> p = new Pair<String, String>(newName, newToken);
-		list.add(p);
-		
-		update(list);
-	}
-
-	private void removeTarget(String delToken) {
-		if (delToken == null || delToken.isEmpty())
-			return;
-		SharedPreferences sp = getSharedPreferences(SP_WRU, Context.MODE_PRIVATE);
-		ArrayList<Pair<String, String>> list = new ArrayList<Pair<String, String>>();
-		final int N = sp.getInt(SP_TARGET_NUMBERS, 0);
-		for (int i = 0; i < N; i++) {
-			String name = sp.getString(SP_TARGET_NAME + i, "");
-			String token = sp.getString(SP_TARGET_TOKEN + i, "");
-			if (token.isEmpty())
-				continue;
-			
-			// Do remove here
-			if (delToken.equals(token))
-				continue;
-			Pair<String, String> p = new Pair<String, String>(name, token);
-			list.add(p);
-		}
-		
-		update(list);
-	}
-
-	private ArrayList<Pair<String, String>> getTargets() {
-		SharedPreferences sp = getSharedPreferences(SP_WRU, Context.MODE_PRIVATE);
-		ArrayList<Pair<String, String>> list = new ArrayList<Pair<String, String>>();
-		final int num = sp.getInt(SP_TARGET_NUMBERS, 0);
-
-		for (int i = 0; i < num; i++) {
-			String name = sp.getString(SP_TARGET_NAME + i, "");
-			String token = sp.getString(SP_TARGET_TOKEN + i, "");
-
-			if (token.isEmpty())
-				continue;
-			Pair<String, String> p = new Pair<String, String>(name, token);
-			list.add(p);
-		}
-		return list;
-	}
-
-	private void newTargetView() {
+	private LinearLayout newTargetView() {
 		LinearLayout empty = (LinearLayout) getLayoutInflater().inflate(R.layout.target_name_token, null);
 		if (empty != null) {
 			ImageButton imgbtn = (ImageButton) empty.findViewById(R.id.btnEdit);
@@ -152,6 +60,7 @@ public class WRUActivity extends Activity {
 			mLinearList.add(empty);
 			mLinearLayout.addView(empty);
 		}
+		return empty;
 	}
 
 	private void logText(String text, int action) {
@@ -188,8 +97,7 @@ public class WRUActivity extends Activity {
 				cb.setPrimaryClip(ClipData.newPlainText(
 						ClipDescription.MIMETYPE_TEXT_PLAIN, token));
 
-				SharedPreferences sp = getSharedPreferences(SP_WRU_ME, Context.MODE_PRIVATE);
-				sp.edit().putString(SP_MY_TOKEN, token).commit();
+				Utility.putMyToken(activity, token);
 				mTokenOkay = true;
 				
 				code.setEnabled(true);
@@ -210,6 +118,9 @@ public class WRUActivity extends Activity {
 		btn.setVisibility(View.GONE);
 		mLinearLayout = (LinearLayout) findViewById(R.id.linearlist);
 		mLinearLog = (LinearLayout) findViewById(R.id.linearLog);
+		SharedPreferences sp = getSharedPreferences(Utility.SP_WRU_ME, Context.MODE_PRIVATE);
+		mPreciseChecked = sp.getBoolean(Utility.SP_PRECISE_CHECKED, true);
+		mTrackChecked = sp.getBoolean(Utility.SP_TRACK_CHECKED, false);
 	}
 
 	private boolean checkPlayServices() {
@@ -238,7 +149,7 @@ public class WRUActivity extends Activity {
 	}
 
 	public void onGetToken(View v) {
-		String token = getMyToken();
+		String token = Utility.getMyToken(this);
 		if (mTokenOkay) {
 			Log.i(TAG, "onGetToken = " + token);
 			emailAccess(token);
@@ -277,7 +188,7 @@ public class WRUActivity extends Activity {
 	protected void onResume() {
 		super.onResume();
 
-		String mytoken = getMyToken();
+		String mytoken = Utility.getMyToken(this);
 		if (mytoken.isEmpty()) {
 			doGetToken();
 			Button btn = (Button) findViewById(R.id.btnGetToken);
@@ -285,14 +196,20 @@ public class WRUActivity extends Activity {
 			btn.setVisibility(View.VISIBLE);
 		}
 
-		ArrayList<Pair<String, String>> list = getTargets();
+		Intent intent = getIntent();
+		Bundle bundle = intent.getExtras();
+		String newToken = null;
+		if (bundle != null)
+			newToken = bundle.getString("newtoken");
+		
+		ArrayList<Target> list = Utility.getTargets(this);
 		if (list.size() > 0) {
-			for (Pair<String, String> p : list) {
+			for (Target p : list) {
 				LinearLayout set = (LinearLayout) getLayoutInflater().inflate(R.layout.target_name_token, null);
 				if (set == null)
 					continue;
-				String name = p.first;
-				String token = p.second;
+				String name = p.mName;
+				String token = p.mToken;
 
 				EditText edit = (EditText) set.findViewById(R.id.textTarget);
 				edit.setText(token);
@@ -304,6 +221,11 @@ public class WRUActivity extends Activity {
 				btn.setVisibility(View.VISIBLE);
 				btn.setTag(token);
 
+				CheckBox chk = (CheckBox) set.findViewById(R.id.chkAllow);
+				chk.setVisibility(View.VISIBLE);
+				chk.setChecked(p.mAllow);
+				chk.setTag(token);
+
 				ImageButton imgbtn = (ImageButton) set.findViewById(R.id.btnEdit);
 				imgbtn.setImageResource(android.R.drawable.ic_input_delete);
 				imgbtn.setTag(set);
@@ -312,7 +234,11 @@ public class WRUActivity extends Activity {
 				mLinearLayout.addView(set);
 			}
 		}
-		newTargetView();
+		LinearLayout newTargetView = newTargetView();
+		if (newToken != null) {
+			EditText edit = (EditText) newTargetView.findViewById(R.id.textTarget);
+			edit.setText(newToken);
+		}
 	}
 
 	@Override
@@ -323,89 +249,52 @@ public class WRUActivity extends Activity {
 		mLinearLayout.removeAllViews();
 	}
 
-	private void sendMessage(String target) {
-		try {
-			URL url = new URL("https://gcm-http.googleapis.com/gcm/send");
-			HttpsURLConnection urlConnection = (HttpsURLConnection) url.openConnection();
-			urlConnection.setDoOutput(true);
-			urlConnection.setRequestProperty("Content-Type", "application/json");
-			urlConnection.setRequestProperty("Authorization", "key=" + getString(R.string.api_key));
-			urlConnection.setRequestMethod("POST");
-
-			String data = "";
-			{
-				JSONObject root = new JSONObject();
-				root.put("to", target);
-				JSONObject jdata = new JSONObject();
-				jdata.put("action", "request location");
-				jdata.put("return_address", getMyToken());
-				jdata.put("priority", 10);
-				jdata.put("delay_while_idle", false);
-
-				root.put("data", jdata);
-				data = root.toString();
-			}
-
-			//Write 
-			OutputStream os = urlConnection.getOutputStream();
-			BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(os, "UTF-8"));
-			writer.write(data);
-			writer.close();
-			os.close();
-
-			//Read
-			BufferedReader br = new BufferedReader(new InputStreamReader(urlConnection.getInputStream(),"UTF-8"));
-
-			String line = null; 
-			StringBuilder sb = new StringBuilder();
-
-			while ((line = br.readLine()) != null) {
-				sb.append(line);
-			}
-
-			br.close();
-			String result = sb.toString();
-			logText(result, 0);
-			Log.d(TAG, result);
-		} catch (MalformedURLException e) {
-			logText("Can't access server", 0);
-			e.printStackTrace();
-		} catch (IOException e) {
-			logText("IO error", 0);
-			e.printStackTrace();
-		} catch (JSONException e) {
-			logText("Error when put data to json object.", 0);
-			e.printStackTrace();
-		}
-	}
-	
 	public void onRequestCoordinates(View v) {
 		final String token = (String) v.getTag();
 		if (token == null || token.isEmpty()) {
 			logText("Token is invalid.", 0);
 			return;
 		}
-		new AsyncTask<Void, Integer, String>() {
-			@Override
-			protected String doInBackground(Void... params) {
-				String msg = "";
-				sendMessage(token);
-				return msg;
-			}
+		try {
+			JSONObject jdata = new JSONObject();
+			jdata.put("action", "request location");
+			jdata.put("return_address", Utility.getMyToken(this));
+			jdata.put("priority", (int) (10));
+			jdata.put("precise", (int) (mPreciseChecked ? 10 : 1));
+			jdata.put("track", (int) (mTrackChecked ? 10 : 1));
+			jdata.put("time", System.currentTimeMillis());
+			jdata.put("delay_while_idle", false);
 
-			@Override
-			protected void onPostExecute(String msg) {
-				logText(msg, 0);
-				Log.d(TAG, msg);
+			JSONObject root = new JSONObject();
+			root.put("to", token);
+			root.put("data", jdata);
+
+			Utility.sendMessageAsync(this, root.toString());
+		} catch (JSONException e) {
+			logText("Error when put data to json object.", 0);
+			e.printStackTrace();
+		}
+	}
+
+	public void onAllowChanged(View v) {
+		String token = (String) v.getTag();
+		CheckBox check = (CheckBox) v;
+		final boolean allow = check.isChecked();
+		ArrayList<Target> list = Utility.getTargets(this);
+		for (Target p : list) {
+			if (p.mToken.equals(token)) {
+				p.mAllow = allow;
 			}
-		}.execute(null, null, null);
+		}
+		Utility.updateTarget(this, list);
 	}
 
 	public void onEditTarget(View v) {
 		final ImageButton imgbtn = (ImageButton) v;
-		final LinearLayout set = (LinearLayout) v.getTag();
+		final LinearLayout set = (LinearLayout) v.getParent();
 		final EditText edit = (EditText) set.findViewById(R.id.textTarget);
 		final Button btn = (Button) set.findViewById(R.id.btnTarget);
+		final CheckBox check = (CheckBox) set.findViewById(R.id.chkAllow);
 
 		if (edit.isEnabled()) {
 			final EditText textName = new EditText(this);
@@ -415,7 +304,6 @@ public class WRUActivity extends Activity {
 				.setView(textName)
 				.setPositiveButton("Save", new DialogInterface.OnClickListener() {
 					public void onClick(DialogInterface dialog, int id) {
-						SharedPreferences sp = getSharedPreferences(SP_WRU, Context.MODE_PRIVATE);
 						String name = textName.getText().toString();
 
 						String token = edit.getText().toString();
@@ -431,14 +319,15 @@ public class WRUActivity extends Activity {
 						btn.setVisibility(View.VISIBLE);
 						btn.setTag(token);
 
+						check.setVisibility(View.VISIBLE);
+						check.setTag(token);
+
 						ImageButton imgbtn = (ImageButton) set.findViewById(R.id.btnEdit);
 						imgbtn.setImageResource(android.R.drawable.ic_input_delete);
-						imgbtn.setTag(set);
 
-						addTarget(name, token);
+						Utility.addTarget(getApplicationContext(), name, token);
 						newTargetView();
-					}}).
-				setCancelable(false).create();
+					}}).create();
 			dialog.show();
 		} else {
 			String name = btn.getText().toString();
@@ -449,7 +338,7 @@ public class WRUActivity extends Activity {
 					public void onClick(DialogInterface dialog, int id) {
 						imgbtn.setImageResource(android.R.drawable.ic_input_add);
 						String token = edit.getText().toString();
-						removeTarget(token);
+						Utility.removeTarget(getApplicationContext(), token);
 						mLinearList.remove(set);
 						mLinearLayout.removeView(set);
 					}})
@@ -466,11 +355,11 @@ public class WRUActivity extends Activity {
 	}
 	@Override
 	public boolean onPrepareOptionsMenu(Menu menu) {
-/*		MenuItem debugMode = menu.findItem(R.id.action_debug_mode);
-		debugMode.setChecked(mDebugMode);
-		MenuItem monitorMode = menu.findItem(R.id.action_monitor_mode);
-		monitorMode.setChecked(mMonitorEnabled);
-*/		return true;
+		MenuItem preciseCheck = menu.findItem(R.id.action_check_precise);
+		preciseCheck.setChecked(mPreciseChecked);
+		MenuItem trackCheck = menu.findItem(R.id.action_check_track);
+		trackCheck.setChecked(mTrackChecked);
+		return true;
 	}
 
 	@Override
@@ -481,6 +370,18 @@ public class WRUActivity extends Activity {
 			btn.setEnabled(true);
 			btn.setVisibility(View.VISIBLE);
 			onGetToken(btn);
+			return true;
+		} else if (id == R.id.action_check_precise) {
+			mPreciseChecked = !item.isChecked();
+			item.setChecked(mPreciseChecked);
+			SharedPreferences sp = getSharedPreferences(Utility.SP_WRU_ME, Context.MODE_PRIVATE);
+			sp.edit().putBoolean(Utility.SP_PRECISE_CHECKED, mPreciseChecked).commit();
+			return true;
+		} else if (id == R.id.action_check_track) {
+			mTrackChecked = !item.isChecked();
+			item.setChecked(mTrackChecked);
+			SharedPreferences sp = getSharedPreferences(Utility.SP_WRU_ME, Context.MODE_PRIVATE);
+			sp.edit().putBoolean(Utility.SP_TRACK_CHECKED, mTrackChecked).commit();
 			return true;
 		}
 		return false;
