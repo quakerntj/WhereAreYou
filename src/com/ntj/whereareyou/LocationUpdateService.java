@@ -31,6 +31,7 @@ public class LocationUpdateService extends Service implements Handler.Callback, 
 	private static final int MSG_GET_LOCATION = 0x0010;
 	private static final int MSG_REPORT_LOCATION = 0x0011;
 	private static final int MSG_STOP_SELF = 0x0012;
+	private static final int MSG_REPORT_COARSE_LOCATION = 0x0013;
 
 	private static final long STOP_SELF_DELAY = 300000;  // in millisecond, 5min
 
@@ -42,6 +43,7 @@ public class LocationUpdateService extends Service implements Handler.Callback, 
 	private int mPrecise = 1;
 	private int mTrack = 1;
 	private Location mLocation = null;
+	private Location mNetworkLocation = null;
 
 	PowerManager.WakeLock mWakelock;
 
@@ -78,6 +80,8 @@ public class LocationUpdateService extends Service implements Handler.Callback, 
 			jdata.put("action", "report location")
 				.put("latitude", l.getLatitude())
 				.put("longitude", l.getLongitude())
+				.put("provider", l.getProvider())
+				.put("time", l.getTime())
 				.put("reporter", Utility.getMyToken(this))
 				.put("priority", 10)
 				.put("delay_while_idle", false);
@@ -97,6 +101,11 @@ public class LocationUpdateService extends Service implements Handler.Callback, 
 		LocationManager locationManager = (LocationManager)
 				getSystemService(Context.LOCATION_SERVICE);
 		switch (what) {
+		case MSG_REPORT_COARSE_LOCATION:
+			if (mNetworkLocation != null)
+				doReportLocation(mNetworkLocation);
+			mNetworkLocation = null;
+			return true;
 		case MSG_REPORT_LOCATION:
 			if (DEBUG) Log.d(TAG, "Track left " + mTrack);
 			if (mLocation != null)
@@ -109,6 +118,7 @@ public class LocationUpdateService extends Service implements Handler.Callback, 
 			return true;
 		case MSG_GET_LOCATION:
 			locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 1, 4, this);
+			locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 1, 4, this);
 			mHandler.sendEmptyMessageDelayed(MSG_STOP_SELF, STOP_SELF_DELAY);
 			return true;
 		case MSG_STOP_SELF:
@@ -128,28 +138,38 @@ public class LocationUpdateService extends Service implements Handler.Callback, 
 	@Override
 	public void onLocationChanged(Location location) {
 		if (DEBUG) Log.d(TAG, location.toString());
-		mLocation = new Location(location);
-		if (mStartTime == 0) {
-			mStartTime = System.currentTimeMillis();
-			Message msg = Message.obtain(mHandler, MSG_REPORT_LOCATION);
-			// Improve the precision, collect location after 3 second. 
-			mHandler.sendMessageDelayed(msg, 3100);
-
-			// When get first position, set self stop timer
-			mHandler.sendEmptyMessageDelayed(MSG_STOP_SELF, mTrack * mPrecise * 1000 + 5000);
-		} else {
-			long current = System.currentTimeMillis();
-			long elapse = current - mStartTime;
-			if (elapse > (mPrecise * 1000)) {
-				mStartTime = current;
+		String provider = location.getProvider();
+		if (LocationManager.GPS_PROVIDER.equals(provider)) {
+			mLocation = new Location(location);
+			if (mStartTime == 0) {
+				mStartTime = System.currentTimeMillis();
 				Message msg = Message.obtain(mHandler, MSG_REPORT_LOCATION);
-				mHandler.removeMessages(MSG_REPORT_LOCATION);
-				mHandler.sendMessage(msg);
+				// Improve the precision, collect location after 3 second.
+				mHandler.sendMessageDelayed(msg, 3100);
+	
+				// When get first position, set self stop timer
+				mHandler.sendEmptyMessageDelayed(MSG_STOP_SELF, mTrack * mPrecise * 1000 + 5000);
 			} else {
-				Message msg = Message.obtain(mHandler, MSG_REPORT_LOCATION);
-				mHandler.removeMessages(MSG_REPORT_LOCATION);
-				mHandler.sendMessageDelayed(msg, mPrecise * 1000 - elapse);
+				long current = System.currentTimeMillis();
+				long elapse = current - mStartTime;
+				if (elapse > (mPrecise * 1000)) {
+					mStartTime = current;
+					Message msg = Message.obtain(mHandler, MSG_REPORT_LOCATION);
+					mHandler.removeMessages(MSG_REPORT_LOCATION);
+					mHandler.sendMessage(msg);
+				} else {
+					Message msg = Message.obtain(mHandler, MSG_REPORT_LOCATION);
+					mHandler.removeMessages(MSG_REPORT_LOCATION);
+					mHandler.sendMessageDelayed(msg, mPrecise * 1000 - elapse);
+				}
 			}
+		} else if (LocationManager.NETWORK_PROVIDER.equals(provider)) {
+			// only update network once
+			//if (mNetworkLocation == null) {
+				mNetworkLocation = new Location(location);
+				Message msg = Message.obtain(mHandler, MSG_REPORT_COARSE_LOCATION);
+				mHandler.sendMessage(msg);
+			//}
 		}
 	}
 
@@ -223,6 +243,8 @@ public class LocationUpdateService extends Service implements Handler.Callback, 
 	@Override
 	public void onDestroy() {
 		if (DEBUG) Log.d(TAG, "onDestroy()");
+		mNetworkLocation = null;
+		mLocation = null;
         synchronized (mLock) {
         	if (mReceiver != null)
         		unregisterReceiver(mReceiver);

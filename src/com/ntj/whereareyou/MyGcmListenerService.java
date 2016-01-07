@@ -5,6 +5,7 @@ import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
+import android.location.LocationManager;
 import android.net.Uri;
 import android.os.Bundle;
 import android.util.Log;
@@ -17,6 +18,9 @@ public class MyGcmListenerService extends GcmListenerService {
 	private void showLocation(Bundle data) {
 		String latStr = data.getString("latitude");
 		String lonStr = data.getString("longitude");
+		String provider = data.getString("provider");
+		String timeStr = data.getString("time");
+		
 		String name;
 		Target caller = Utility.getTargetByToken(this, data.getString("reporter"));
 		if (caller == null)
@@ -32,6 +36,31 @@ public class MyGcmListenerService extends GcmListenerService {
 		Intent intent = new Intent(android.content.Intent.ACTION_VIEW, uri);
 		intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
 
+		// If coarse location, only update on the notification, wait for click. 
+		if (!LocationManager.GPS_PROVIDER.equals(provider)) {
+			long time;
+			try {
+				time = Long.valueOf(timeStr);
+			} catch (NumberFormatException e) {
+				time = System.currentTimeMillis(); 
+			}
+		
+			PendingIntent pi = PendingIntent.getActivity(this, 1,
+					intent, PendingIntent.FLAG_UPDATE_CURRENT);
+			Notification n = new Notification.Builder(this).setContentTitle("Coarse Location is")
+					.setContentText(latStr + "," + lonStr)
+					.setSmallIcon(R.drawable.ic_launcher)
+					.setDefaults(Notification.DEFAULT_SOUND)
+					.setContentIntent(pi).build();
+			NotificationManager nm = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+			nm.cancel(1);
+			nm.notify(1, n);
+			return;
+		}
+
+		// Remove coarse position
+		NotificationManager nm = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+		nm.cancel(1);
 		startActivity(intent);
 	}
 
