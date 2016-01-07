@@ -17,3 +17,6 @@ You need give this ID code to your friend, and your friend give his ID code.  Yo
 
 # Send Request
 Press the name button to know the target's location.  The google map will open the location for you if target has response.
+
+# Security
+This software doesn't have a server.  Your phone ID can be known by only Google and your family.  I will never try to record you ID.  I will never try to locate you.  It's safe to use.
