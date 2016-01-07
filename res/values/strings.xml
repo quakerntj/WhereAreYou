@@ -4,6 +4,8 @@
 	<string name="app_name">WRU</string>
 	<string name="btn_id_hint">Click here to get id of your phone.</string>
 	<string name="btn_id_wait_id">Waiting for get Token from GCM server.\nCode will be shown here</string>
+	<string name="btn_stop_background">Stop Locating.</string>
+	
 	<string name="text_target">Target</string>
 	<string name="text_target_hint">Enter the token of your target here.</string>
 	<string name="btn_get_coordinates">Get Coordinates</string>

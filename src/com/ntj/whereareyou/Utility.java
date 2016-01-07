@@ -37,7 +37,8 @@ public class Utility {
 	public static final String SP_TARGET_TOKEN = "target_token_";
 	public static final String SP_TARGET_NAME = "target_name_";
 	public static final String SP_TARGET_ALLOW = "target_allow_";
-	public static final long TIME_EXPIRE = 30 * 1000;  // Request expired after 6 hours
+	public static final long TIME_EXPIRE = 3 * 60 * 60 * 1000;  // Request expired after 3 hours
+	public static final String ACTION_STOP_BACKGROUND = "com.ntj.whereareyou.STOP_BACKGROUND";
 
 	public static void sendMessageAsync(Context context, String data) {
 		new AsyncTask<Object, Integer, Void>() {

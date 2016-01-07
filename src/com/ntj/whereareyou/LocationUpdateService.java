@@ -4,8 +4,10 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import android.app.Service;
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
@@ -24,13 +26,12 @@ import android.util.Log;
  */
 public class LocationUpdateService extends Service implements Handler.Callback, LocationListener {
 	private static final String TAG = "WRU";
-	private static final boolean DEBUG = true;
+	private static final boolean DEBUG = false;
 
 	private static final int MSG_GET_LOCATION = 0x0010;
 	private static final int MSG_REPORT_LOCATION = 0x0011;
 	private static final int MSG_STOP_SELF = 0x0012;
 
-	private static final long WAIT_LOCATION_AFTER_DELAY = 1000;  // in millisecond
 	private static final long STOP_SELF_DELAY = 300000;  // in millisecond, 5min
 
 	private HandlerThread mThread = null;
@@ -40,13 +41,21 @@ public class LocationUpdateService extends Service implements Handler.Callback, 
 	private String mReturnAddress = null;
 	private int mPrecise = 1;
 	private int mTrack = 1;
-	private String mCaller = "Target";
 	private Location mLocation = null;
 
 	PowerManager.WakeLock mWakelock;
-	
+
+	class MyReceiver extends BroadcastReceiver {
+		@Override
+		public void onReceive(Context context, Intent intent) {
+			if (mHandler != null)
+				mHandler.sendEmptyMessage(MSG_STOP_SELF);
+		}
+	}
+	private BroadcastReceiver mReceiver;
+
 	private void doReportStart() {
-		if (DEBUG) Log.d(TAG, "doReportLocation");
+		if (DEBUG) Log.d(TAG, "doReportStart");
 		try {
 			JSONObject jdata = new JSONObject();
 			jdata.put("action", "report starting")
@@ -78,7 +87,6 @@ public class LocationUpdateService extends Service implements Handler.Callback, 
 			Utility.sendMessageAsync(this, root.toString());
 		} catch (JSONException e) {
 			e.printStackTrace();
-			stopSelf();
 		}
 	}
 
@@ -95,7 +103,8 @@ public class LocationUpdateService extends Service implements Handler.Callback, 
 				doReportLocation(mLocation);
 			if (--mTrack <= 0) {
 				locationManager.removeUpdates(this);
-				stopSelf();
+				// Let AsyncTask finish
+				mHandler.sendEmptyMessageDelayed(MSG_STOP_SELF, 5000);
 			}
 			return true;
 		case MSG_GET_LOCATION:
@@ -119,17 +128,16 @@ public class LocationUpdateService extends Service implements Handler.Callback, 
 	@Override
 	public void onLocationChanged(Location location) {
 		if (DEBUG) Log.d(TAG, location.toString());
-		if (location == null) {
-			Log.d(TAG, "Location is null");
-			return;
-		}
+		mLocation = new Location(location);
 		if (mStartTime == 0) {
 			mStartTime = System.currentTimeMillis();
 			Message msg = Message.obtain(mHandler, MSG_REPORT_LOCATION);
-			mHandler.sendMessage(msg);
-			mHandler.sendEmptyMessageDelayed(MSG_STOP_SELF, mTrack * mPrecise * 1000);
+			// Improve the precision, collect location after 3 second. 
+			mHandler.sendMessageDelayed(msg, 3100);
+
+			// When get first position, set self stop timer
+			mHandler.sendEmptyMessageDelayed(MSG_STOP_SELF, mTrack * mPrecise * 1000 + 5000);
 		} else {
-			mLocation = new Location(location);
 			long current = System.currentTimeMillis();
 			long elapse = current - mStartTime;
 			if (elapse > (mPrecise * 1000)) {
@@ -170,13 +178,12 @@ public class LocationUpdateService extends Service implements Handler.Callback, 
 		if (DEBUG) Log.d(TAG, "Service has received start id " + startId + ": " + intent);
 		mReturnAddress = intent.getStringExtra("return_address");
 		if (mReturnAddress == null || mReturnAddress.isEmpty()) {
-			Log.d(TAG, "Lack return address");
+			Log.e(TAG, "Lack return address");
 			return START_NOT_STICKY;
 		}
 
 		mPrecise = intent.getIntExtra("precise", 10);
 		mTrack = intent.getIntExtra("track", 1);
-		mCaller = intent.getStringExtra("caller");
 
 		if (mPrecise <= 0)
 			mPrecise = 1;
@@ -188,11 +195,15 @@ public class LocationUpdateService extends Service implements Handler.Callback, 
 			mTrack = 240 / mPrecise;
 		if (DEBUG) Log.d(TAG, "Precise " + mPrecise + ", Track " + mTrack);
 
+		mReceiver = new MyReceiver();
+		IntentFilter filter = new IntentFilter(Utility.ACTION_STOP_BACKGROUND);
+		registerReceiver(mReceiver, filter);
+		
 		// We want this service to continue running until it is explicitly
         // stopped, so return sticky.
         synchronized (mLock) {
         	if (mThread != null)
-        		return START_STICKY;
+        		return START_NOT_STICKY;
     		mThread = new HandlerThread("H1");
     		mThread.start();
     		mStartTime = 0;
@@ -206,13 +217,16 @@ public class LocationUpdateService extends Service implements Handler.Callback, 
 
     		doReportStart();
         }
-        return START_STICKY;
+        return START_NOT_STICKY;
     }
 
 	@Override
 	public void onDestroy() {
 		if (DEBUG) Log.d(TAG, "onDestroy()");
         synchronized (mLock) {
+        	if (mReceiver != null)
+        		unregisterReceiver(mReceiver);
+        	mReceiver = null;
     		mHandler = null;
     		if (mThread != null)
     			mThread.quit();

@@ -24,15 +24,11 @@
 		android:orientation="vertical" >
 	</LinearLayout>
 
-	<ScrollView
+	<Button
+		android:id="@+id/btnStop"
 		android:layout_width="match_parent"
-		android:layout_height="match_parent" >
-		<LinearLayout
-			android:id="@+id/linearLog"
-			android:layout_width="match_parent"
-			android:layout_height="wrap_content"
-			android:orientation="vertical" >
-		</LinearLayout>
-	</ScrollView>
-
+		android:layout_height="wrap_content"
+		android:onClick="onStopBackground"
+		android:text="@string/btn_stop_background"
+		android:textAllCaps="false" />
 </LinearLayout>

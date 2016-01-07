@@ -48,7 +48,6 @@ public class WRUActivity extends Activity {
 
 	private ArrayList<LinearLayout> mLinearList = new ArrayList<LinearLayout>();
 	private LinearLayout mLinearLayout;
-	private LinearLayout mLinearLog;
 
 
 	private LinearLayout newTargetView() {
@@ -66,7 +65,6 @@ public class WRUActivity extends Activity {
 	private void logText(String text, int action) {
 		//TextView txt = new TextView(this);
 		//txt.setText(text);
-		//mLinearLog.addView(txt);
 	}
 	
 	@SuppressLint("HandlerLeak")
@@ -117,7 +115,6 @@ public class WRUActivity extends Activity {
 		btn.setEnabled(false);
 		btn.setVisibility(View.GONE);
 		mLinearLayout = (LinearLayout) findViewById(R.id.linearlist);
-		mLinearLog = (LinearLayout) findViewById(R.id.linearLog);
 		SharedPreferences sp = getSharedPreferences(Utility.SP_WRU_ME, Context.MODE_PRIVATE);
 		mPreciseChecked = sp.getBoolean(Utility.SP_PRECISE_CHECKED, true);
 		mTrackChecked = sp.getBoolean(Utility.SP_TRACK_CHECKED, false);
@@ -245,7 +242,6 @@ public class WRUActivity extends Activity {
 	protected void onPause() {
 		super.onPause();
 		mLinearList.clear();
-		mLinearLog.removeAllViews();
 		mLinearLayout.removeAllViews();
 	}
 
@@ -345,6 +341,11 @@ public class WRUActivity extends Activity {
 				.setNegativeButton("Cancel", null).create();
 			dialog.show();
 		}
+	}
+
+	public void onStopBackground(View v) {
+		Intent intent = new Intent(Utility.ACTION_STOP_BACKGROUND);
+		sendBroadcast(intent);
 	}
 
 	@Override

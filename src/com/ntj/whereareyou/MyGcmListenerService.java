@@ -1,13 +1,10 @@
 package com.ntj.whereareyou;
 
-import java.util.ArrayList;
-
 import android.app.Notification;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
-import android.media.RingtoneManager;
 import android.net.Uri;
 import android.os.Bundle;
 import android.util.Log;
@@ -94,8 +91,11 @@ public class MyGcmListenerService extends GcmListenerService {
 				.putExtra("caller", caller.mName)
 				.putExtra("time", time);
 			startService(intent);
+			PendingIntent pi = PendingIntent.getActivity(this, 0,
+					new Intent().setClass(this, WRUActivity.class),
+					PendingIntent.FLAG_UPDATE_CURRENT);
 			String text = caller.mName + " is looking for you.";
-			Utility.onCallNotification(this, text, time);
+			Utility.onCallNotification(this, text, time, pi);
 		} else if (action.equals("report location")) {
 			showLocation(data);
 		} else if (action.equals("report fail")) {

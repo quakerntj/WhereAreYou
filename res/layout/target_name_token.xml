@@ -28,7 +28,9 @@
 	   	android:layout_weight="1"
 	   	android:layout_height="wrap_content"
 		android:text="@string/btn_get_coordinates"
-	   	android:onClick="onRequestCoordinates" />
+	   	android:onClick="onRequestCoordinates"
+	   	android:textAllCaps="false" />
+
 	<ImageButton
 		android:id="@+id/btnEdit"
 		style="?android:attr/buttonStyleSmall"
