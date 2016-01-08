@@ -44,6 +44,7 @@ public class LocationUpdateService extends Service implements Handler.Callback, 
 	private int mTrack = 1;
 	private Location mLocation = null;
 	private Location mNetworkLocation = null;
+	private int mReportCounts = 0;
 
 	PowerManager.WakeLock mWakelock;
 
@@ -73,6 +74,29 @@ public class LocationUpdateService extends Service implements Handler.Callback, 
 		}
 	}
 
+	private void doReportFinish() {
+		if (DEBUG) Log.d(TAG, "doReportFinish");
+		try {
+			JSONObject jdata = new JSONObject();
+			jdata.put("action", "report finish")
+				.put("priority", 10)
+				.put("report_counts", mReportCounts)
+				.put("reporter", Utility.getMyToken(this))
+				.put("delay_while_idle", false);
+			JSONObject root = new JSONObject();
+			root.put("to", mReturnAddress);
+			root.put("data", jdata);
+			Utility.sendMessageAsync(this, root.toString(), new Utility.AsyncTaskCallback() {
+				@Override
+				void onPostExecute() {
+					stopSelf();
+				}
+			});
+		} catch (JSONException e) {
+			e.printStackTrace();
+		}
+	}
+
 	private void doReportLocation(Location l) {
 		if (DEBUG) Log.d(TAG, "doReportLocation");
 		try {
@@ -89,6 +113,7 @@ public class LocationUpdateService extends Service implements Handler.Callback, 
 			root.put("to", mReturnAddress);
 			root.put("data", jdata);
 			Utility.sendMessageAsync(this, root.toString());
+			mReportCounts++;
 		} catch (JSONException e) {
 			e.printStackTrace();
 		}
@@ -104,7 +129,6 @@ public class LocationUpdateService extends Service implements Handler.Callback, 
 		case MSG_REPORT_COARSE_LOCATION:
 			if (mNetworkLocation != null)
 				doReportLocation(mNetworkLocation);
-			mNetworkLocation = null;
 			return true;
 		case MSG_REPORT_LOCATION:
 			if (DEBUG) Log.d(TAG, "Track left " + mTrack);
@@ -113,6 +137,7 @@ public class LocationUpdateService extends Service implements Handler.Callback, 
 			if (--mTrack <= 0) {
 				locationManager.removeUpdates(this);
 				// Let AsyncTask finish
+				mHandler.removeMessages(MSG_STOP_SELF);
 				mHandler.sendEmptyMessageDelayed(MSG_STOP_SELF, 5000);
 			}
 			return true;
@@ -129,7 +154,7 @@ public class LocationUpdateService extends Service implements Handler.Callback, 
 	    			mThread.quit();
 				mThread = null;
 	        }
-			stopSelf();
+	        doReportFinish();
 			return true;
 		}
 		return false;
@@ -245,7 +270,11 @@ public class LocationUpdateService extends Service implements Handler.Callback, 
 		if (DEBUG) Log.d(TAG, "onDestroy()");
 		mNetworkLocation = null;
 		mLocation = null;
-        synchronized (mLock) {
+		mReportCounts = 0;
+		mTrack = 0;
+		mPrecise = 0;
+
+		synchronized (mLock) {
         	if (mReceiver != null)
         		unregisterReceiver(mReceiver);
         	mReceiver = null;

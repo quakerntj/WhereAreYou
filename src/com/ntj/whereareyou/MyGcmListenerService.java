@@ -1,5 +1,7 @@
 package com.ntj.whereareyou;
 
+import java.util.Calendar;
+
 import android.app.Notification;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
@@ -8,19 +10,21 @@ import android.content.Intent;
 import android.location.LocationManager;
 import android.net.Uri;
 import android.os.Bundle;
+import android.text.format.DateFormat;
 import android.util.Log;
 
 import com.google.android.gms.gcm.GcmListenerService;
 
 public class MyGcmListenerService extends GcmListenerService {
 	private static final String TAG = "WRU";
+	private static final boolean DEBUG = false;
 
 	private void showLocation(Bundle data) {
 		String latStr = data.getString("latitude");
 		String lonStr = data.getString("longitude");
 		String provider = data.getString("provider");
 		String timeStr = data.getString("time");
-		
+
 		String name;
 		Target caller = Utility.getTargetByToken(this, data.getString("reporter"));
 		if (caller == null)
@@ -47,8 +51,11 @@ public class MyGcmListenerService extends GcmListenerService {
 		
 			PendingIntent pi = PendingIntent.getActivity(this, 1,
 					intent, PendingIntent.FLAG_UPDATE_CURRENT);
+			Calendar cal = Calendar.getInstance();
+			cal.setTimeInMillis(time);
+			java.text.DateFormat df = DateFormat.getTimeFormat(this);
 			Notification n = new Notification.Builder(this).setContentTitle("Coarse Location is")
-					.setContentText(latStr + "," + lonStr)
+					.setContentText(latStr + "," + lonStr + "\nAt " + df.format(cal.getTime()))
 					.setSmallIcon(R.drawable.ic_launcher)
 					.setDefaults(Notification.DEFAULT_SOUND)
 					.setContentIntent(pi).build();
@@ -65,11 +72,11 @@ public class MyGcmListenerService extends GcmListenerService {
 	}
 
 	public void onMessageReceived(String from, Bundle data) {
-		Log.d(TAG, "onMessageReceived(" + from + ")");
+		if (DEBUG) Log.d(TAG, "onMessageReceived(" + from + ")");
 		String action = data.getString("action");
 		if (action == null)
 			return;
-		Log.d(TAG, "action: " + action);
+		if (DEBUG) Log.d(TAG, "action: " + action);
 
 		if (action.equals("request location")) {
 			String returnAddr = data.getString("return_address");
@@ -103,7 +110,7 @@ public class MyGcmListenerService extends GcmListenerService {
 				return;
 			}
 
-			Log.d(TAG, "start service");
+			if (DEBUG) Log.d(TAG, "start service");
 			int precise, track;
 			try {
 				precise = Integer.valueOf(data.getString("precise"));
@@ -127,13 +134,34 @@ public class MyGcmListenerService extends GcmListenerService {
 			Utility.onCallNotification(this, text, time, pi);
 		} else if (action.equals("report location")) {
 			showLocation(data);
-		} else if (action.equals("report fail")) {
+		} else if (action.equals("report finish")) {
+			int counts;
+			String name;
+			Target caller = Utility.getTargetByToken(this, data.getString("reporter"));
+			if (caller == null)
+				name = "Your target";
+			else
+				name = caller.mName;
+ 
+			try {
+				counts = Integer.valueOf(data.getString("report_counts"));
+			} catch (NumberFormatException e) {
+				counts = 0;
+			}
+			NotificationManager nm = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
 			Notification.Builder builder = new Notification.Builder(this);
-			Notification n = builder.setContentTitle("Fail to locate")
+			Notification n;
+			if (counts <= 0) {
+				n = builder.setContentTitle(name + "fail to locate")
 					.setSmallIcon(R.drawable.ic_launcher)
 					.setAutoCancel(true)
-					.setContentText("Target didn't have GPS signal").build();
-			NotificationManager nm = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+					.setContentText(name + " didn't have GPS/Network signals").build();
+			} else {
+				n = builder.setContentTitle("Locating was Finished")
+					.setSmallIcon(R.drawable.ic_launcher)
+					.setAutoCancel(true)
+					.setContentText(name + " report " + counts + " times.").build();
+			}
 			nm.cancel(0);
 			nm.notify(0, n);
 		} else if (action.equals("report starting")) {

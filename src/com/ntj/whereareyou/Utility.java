@@ -40,12 +40,24 @@ public class Utility {
 	public static final long TIME_EXPIRE = 3 * 60 * 60 * 1000;  // Request expired after 3 hours
 	public static final String ACTION_STOP_BACKGROUND = "com.ntj.whereareyou.STOP_BACKGROUND";
 
+	abstract static class AsyncTaskCallback {
+		abstract void onPostExecute();
+	}
+
 	public static void sendMessageAsync(Context context, String data) {
+		sendMessageAsync(context, data, null);
+	}
+	public static void sendMessageAsync(Context context, String data, final AsyncTaskCallback callback) {
 		new AsyncTask<Object, Integer, Void>() {
 			@Override
 			protected Void doInBackground(Object... params) {
 				sendMessage((Context) params[0], (String) params[1]);
 				return null;
+			}
+			@Override
+			protected void onPostExecute(Void result) {
+				if (callback != null)
+					callback.onPostExecute();
 			}
 		}.execute(context, data, null);
 	}
