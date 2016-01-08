@@ -6,9 +6,25 @@
 	<string name="btn_id_wait_id">Waiting for get Token from GCM server.\nCode will be shown here</string>
 	<string name="btn_stop_background">Stop Locating.</string>
 	
-	<string name="text_target">Target</string>
+	<string name="text_target">Allowed | Enter target ID / Target name displayed | Add/Remove</string>
 	<string name="text_target_hint">Enter the token of your target here.</string>
-	<string name="btn_get_coordinates">Get Coordinates</string>
 	<string name="sender_id">972872290748</string>
 	<string name="api_key">AIzaSyAFHh_oU5vRXI88YKiVgrYMcI3E9q5LF9I</string>
+
+	<string name="menu_get_myid">Get my ID</string>
+	<string name="menu_report_precise">10s report once</string>
+	<string name="menu_track">Report 10 times</string>
+	
+	<string name="code_your_target">Your target</string>
+	<string name="code_fail_to_locate">Fail to locate %1$s</string>
+	<string name="code_no_gps_signal">May not have GPS/Network signals</string>
+	<string name="code_finish_title">Locating was Finished</string>
+	<string name="code_report_counts">%1$s had reported %2$d times</string>
+	<string name="code_request_delivered">Your request has been delivered</string>
+	<string name="code_locating">%1$s is locating currently</string>
+	<string name="code_been_looking">%1$s is looking for you</string>
+	<string name="code_expired">\'s request is expired</string>
+	<string name="code_blocked">\'s request is blocked</string>
+	<string name="code_stranger">An stranger is looking for you</string>
+	<string name="code_coarse">Coarse Location is</string>
 </resources>

@@ -28,7 +28,7 @@ public class MyGcmListenerService extends GcmListenerService {
 		String name;
 		Target caller = Utility.getTargetByToken(this, data.getString("reporter"));
 		if (caller == null)
-			name = "Your target";
+			name = getString(R.string.code_your_target);
 		else
 			name = caller.mName;
 		String uriBegin = "geo:" + latStr + "," + lonStr;
@@ -54,7 +54,7 @@ public class MyGcmListenerService extends GcmListenerService {
 			Calendar cal = Calendar.getInstance();
 			cal.setTimeInMillis(time);
 			java.text.DateFormat df = DateFormat.getTimeFormat(this);
-			Notification n = new Notification.Builder(this).setContentTitle("Coarse Location is")
+			Notification n = new Notification.Builder(this).setContentTitle(getString(R.string.code_coarse))
 					.setContentText(latStr + "," + lonStr + "\nAt " + df.format(cal.getTime()))
 					.setSmallIcon(R.drawable.ic_launcher)
 					.setDefaults(Notification.DEFAULT_SOUND)
@@ -93,19 +93,19 @@ public class MyGcmListenerService extends GcmListenerService {
 						new Intent().setClass(this, WRUActivity.class)
 							.putExtra("newtoken", returnAddr),
 						PendingIntent.FLAG_UPDATE_CURRENT);
-				String text = "An Stranger is looking for you.";
+				String text = getString(R.string.code_stranger);
 				Utility.onCallNotification(this, text, time, pi);
 				return;
 			}
 
 			if (!caller.mAllow) {
-				String text = caller.mName + "'s request is blocked.";
+				String text = String.format(getString(R.string.code_blocked), caller.mName);
 				Utility.onCallNotification(this, text, time);
 				return;
 			}
 
 			if ((current - time) > Utility.TIME_EXPIRE) {
-				String text = caller.mName + "'s request is expired.";
+				String text = String.format(getString(R.string.code_expired), caller.mName);
 				Utility.onCallNotification(this, text, time);
 				return;
 			}
@@ -130,7 +130,7 @@ public class MyGcmListenerService extends GcmListenerService {
 			PendingIntent pi = PendingIntent.getActivity(this, 0,
 					new Intent().setClass(this, WRUActivity.class),
 					PendingIntent.FLAG_UPDATE_CURRENT);
-			String text = caller.mName + " is looking for you.";
+			String text = String.format(getString(R.string.code_been_looking), caller.mName);
 			Utility.onCallNotification(this, text, time, pi);
 		} else if (action.equals("report location")) {
 			showLocation(data);
@@ -139,7 +139,7 @@ public class MyGcmListenerService extends GcmListenerService {
 			String name;
 			Target caller = Utility.getTargetByToken(this, data.getString("reporter"));
 			if (caller == null)
-				name = "Your target";
+				name = getString(R.string.code_your_target);
 			else
 				name = caller.mName;
  
@@ -152,15 +152,15 @@ public class MyGcmListenerService extends GcmListenerService {
 			Notification.Builder builder = new Notification.Builder(this);
 			Notification n;
 			if (counts <= 0) {
-				n = builder.setContentTitle(name + "fail to locate")
+				n = builder.setContentTitle(String.format(getString(R.string.code_fail_to_locate), name))
 					.setSmallIcon(R.drawable.ic_launcher)
 					.setAutoCancel(true)
-					.setContentText(name + " didn't have GPS/Network signals").build();
+					.setContentText(getString(R.string.code_no_gps_signal)).build();
 			} else {
-				n = builder.setContentTitle("Locating was Finished")
+				n = builder.setContentTitle(getString(R.string.code_finish_title))
 					.setSmallIcon(R.drawable.ic_launcher)
 					.setAutoCancel(true)
-					.setContentText(name + " report " + counts + " times.").build();
+					.setContentText(String.format(getString(R.string.code_report_counts), name, counts)).build();
 			}
 			nm.cancel(0);
 			nm.notify(0, n);
@@ -170,14 +170,14 @@ public class MyGcmListenerService extends GcmListenerService {
 			Target caller = Utility.getTargetByToken(this, token);
 			String name;
 			if (caller == null)
-				name = "Target";
+				name = getString(R.string.code_your_target);
 			else
 				name = caller.mName;
-			Notification n = builder.setContentTitle("Your request has been delivered")
+			Notification n = builder.setContentTitle(getString(R.string.code_request_delivered))
 					.setSmallIcon(R.drawable.ic_launcher)
 					.setDefaults(Notification.DEFAULT_SOUND)
 					.setAutoCancel(true)
-					.setContentText(name + " is locating currently.").build();
+					.setContentText(String.format(getString(R.string.code_locating), name)).build();
 			NotificationManager nm = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
 			nm.cancel(0);
 			nm.notify(0, n);
