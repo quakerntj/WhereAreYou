@@ -2,21 +2,16 @@ package com.ntj.whereareyou;
 
 import java.util.Calendar;
 
-import org.json.JSONException;
-import org.json.JSONObject;
-
 import android.app.Notification;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
-import android.location.Location;
 import android.location.LocationManager;
 import android.net.Uri;
 import android.os.Bundle;
 import android.text.format.DateFormat;
 import android.util.Log;
-import android.widget.Toast;
 
 import com.google.android.gms.gcm.GcmListenerService;
 
@@ -84,11 +79,12 @@ public class MyGcmListenerService extends GcmListenerService {
 			return;
 		if (DEBUG) Log.d(TAG, "action: " + action);
 
-
-		if (action.equals("request location") || action.equals("request cancel")) {
+		if (action.equals("request cancel")) {
+			sendBroadcast(new Intent(Utility.ACTION_STOP_BACKGROUND));
+		} else if (action.equals("request location")) {
 			if (!Utility.hasPermission(Utility.PERMISSION_COARSE_LOCATION) &&
 					!Utility.hasPermission(Utility.PERMISSION_FINE_LOCATION)) {
-				Toast.makeText(this, "No permission", Toast.LENGTH_SHORT).show();
+				Log.w(TAG, "Permission of location is disabled by user");
 				return;
 			}
 			String returnAddr = data.getString("return_address");
@@ -124,24 +120,18 @@ public class MyGcmListenerService extends GcmListenerService {
 
 			if (DEBUG) Log.d(TAG, "start service");
 			int precise = 1, track = 1;
-			boolean cancel = false;
-			if (action.equals("request cancel"))
-				cancel = true;
-			if (!cancel) {
-				try {
-					precise = Integer.valueOf(data.getString("precise"));
-					track = Integer.valueOf(data.getString("track"));
-				} catch (NumberFormatException e) {
-					precise = 1;
-					track = 1;
-				}
+			try {
+				precise = Integer.valueOf(data.getString("precise"));
+				track = Integer.valueOf(data.getString("track"));
+			} catch (NumberFormatException e) {
+				precise = 1;
+				track = 1;
 			}
 
 			Intent intent = new Intent(this, LocationUpdateService.class);
 			intent.putExtra("return_address", returnAddr)
 				.putExtra("precise", precise)
 				.putExtra("track", track)
-				.putExtra("cancel", cancel)
 				.putExtra("caller", caller.mName)
 				.putExtra("time", time);
 			startService(intent);
@@ -184,16 +174,16 @@ public class MyGcmListenerService extends GcmListenerService {
 			nm.notify(0, n);
 		} else if (action.equals("report starting")) {
 			Notification.Builder builder = new Notification.Builder(this);
-			String token = data.getString("caller");
-			Target caller = Utility.getTargetByToken(this, token);
+			String token = data.getString("reporter");
+			Target reporter = Utility.getTargetByToken(this, token);
 			String name;
-			if (caller == null)
+			if (reporter == null)
 				name = getString(R.string.code_your_target);
 			else
-				name = caller.mName;
+				name = reporter.mName;
 			Intent cancelIntent = new Intent(Utility.ACTION_STOP_LOCATE_TAGET);
 			cancelIntent.putExtra("to", token);
-			PendingIntent cancelPIntent = PendingIntent.getBroadcast(this, 0, cancelIntent, PendingIntent.FLAG_ONE_SHOT);
+			PendingIntent cancelPIntent = PendingIntent.getBroadcast(this, 1, cancelIntent, PendingIntent.FLAG_ONE_SHOT);
 			Notification n = builder.setContentTitle(getString(R.string.code_request_delivered))
 					.setSmallIcon(R.drawable.ic_launcher)
 					.setDefaults(Notification.DEFAULT_SOUND)

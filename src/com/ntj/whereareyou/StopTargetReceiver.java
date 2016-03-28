@@ -6,7 +6,6 @@ import org.json.JSONObject;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
-import android.location.Location;
 import android.util.Log;
 
 public class StopTargetReceiver extends BroadcastReceiver {
@@ -29,12 +28,13 @@ public class StopTargetReceiver extends BroadcastReceiver {
 
 	@Override
 	public void onReceive(Context context, Intent intent) {
-		Log.d("WRU", "StopTarget::onReceive()");
 		if (!Utility.ACTION_STOP_LOCATE_TAGET.equals(intent.getAction()))
 			return;
 		String target = intent.getStringExtra("to");
-		if (target == null)
+		if (target == null) {
+			Log.e("WRU", "unknown target");
 			return;
+		}
 		doStopLocating(context, target);
 	}
 }

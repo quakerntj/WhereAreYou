@@ -42,7 +42,6 @@ public class LocationUpdateService extends Service implements Handler.Callback, 
 	private String mReturnAddress = null;
 	private int mPrecise = 1;
 	private int mTrack = 1;
-	private boolean mCancel = false; 
 	private Location mLocation = null;
 	private Location mNetworkLocation = null;
 	private int mReportCounts = 0;
@@ -236,14 +235,6 @@ public class LocationUpdateService extends Service implements Handler.Callback, 
 		if (mReturnAddress == null || mReturnAddress.isEmpty()) {
 			Log.e(TAG, "Lack return address");
 			return START_NOT_STICKY;
-		}
-
-		mCancel = intent.getBooleanExtra("cancel", false);
-		if (mCancel) {
-			if (mHandler != null)
-				mHandler.sendEmptyMessage(MSG_STOP_SELF);
-			else
-				return START_NOT_STICKY;
 		}
 
 		mPrecise = intent.getIntExtra("precise", 10);

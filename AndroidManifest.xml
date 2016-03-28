@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
 	package="com.ntj.whereareyou"
-	android:versionCode="5"
+	android:versionCode="6"
 	android:versionName="2.8" >
 
 	<uses-sdk
@@ -43,10 +43,9 @@
         </receiver>
 		<receiver
 			android:name=".StopTargetReceiver"
-			android:exported="false">
+			android:exported="true">
 			<intent-filter>
-				<action android:name="com.ntj.whereareyou.ACTION_STOP_LOCATE_TAGET" />
-				<category android:name="com.ntj.whereareyou" />
+				<action android:name="com.ntj.whereareyou.STOP_LOCATE_TAGET" />
 			</intent-filter>
 		</receiver>
             	

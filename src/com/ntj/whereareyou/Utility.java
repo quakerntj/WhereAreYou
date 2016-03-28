@@ -239,10 +239,11 @@ public class Utility {
 			.setContentTitle("At " + df.format(cal.getTime()))
 	        .setContentText(text)
 	        .setSmallIcon(R.drawable.ic_launcher)
-	        .setVibrate(pat)
 	        .setSound(RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE))
 	        .setContentIntent(pi)
 	        .setAutoCancel(true);
+		if (hasPermission(PERMISSION_VIBRATE))
+			builder.setVibrate(pat);
 		Notification notification = builder.build();
 
 	    nm.notify(0, notification);
