@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+	<string name="app_name">你在哪兒?</string>
+	<string name="btn_id_hint">點此取得你手機的唯一認證碼 ID</string>
+	<string name="btn_id_wait_id">正在從Google取得認證ID請稍候\n成功, 將於此顯示</string>
+	<string name="btn_stop_background">停止取得我的位置</string>
+	
+	<string name="text_target">允許 | 輸入對方ID / 顯示名稱 | 新增/移除</string>
+	<string name="text_target_hint">在此輸入對方的ID</string>
+	<string name="menu_get_myid">取得我的ID</string>
+	<string name="menu_report_precise">10秒回報/次</string>
+	<string name="menu_track">回報10次</string>
+	
+	<string name="code_your_target">目標</string>
+	<string name="code_fail_to_locate">無法定位%1$s</string>
+	<string name="code_no_gps_signal">沒有衛星或網路定位訊號</string>
+	<string name="code_finish_title">定位已完成</string>
+	<string name="code_report_counts">%1$s已回報%2$d次定位</string>
+	<string name="code_request_delivered">定位要求已送達</string>
+	<string name="code_locating">%1$s正在定位中</string>
+	<string name="code_been_looking">%1$s正在找你</string>
+	<string name="code_expired">的定位請求已過期</string>
+	<string name="code_blocked">的定位請求已被阻擋</string>
+	<string name="code_stranger">有陌生人正在找你</string>
+	<string name="code_coarse">粗略的定位為</string>
+</resources>

@@ -13,6 +13,7 @@ import java.util.Calendar;
 
 import javax.net.ssl.HttpsURLConnection;
 
+import android.Manifest;
 import android.app.Notification;
 import android.app.Notification.Builder;
 import android.app.NotificationManager;
@@ -21,8 +22,10 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.SharedPreferences.Editor;
+import android.content.pm.PackageManager;
 import android.media.RingtoneManager;
 import android.os.AsyncTask;
+import android.support.v4.content.ContextCompat;
 import android.text.format.DateFormat;
 import android.util.Log;
 
@@ -39,7 +42,16 @@ public class Utility {
 	public static final String SP_TARGET_ALLOW = "target_allow_";
 	public static final long TIME_EXPIRE = 3 * 60 * 60 * 1000;  // Request expired after 3 hours
 	public static final String ACTION_STOP_BACKGROUND = "com.ntj.whereareyou.STOP_BACKGROUND";
+	public static final String ACTION_STOP_LOCATE_TAGET = "com.ntj.whereareyou.STOP_LOCATE_TAGET";
 
+	public static final int PERMISSION_FINE_LOCATION = 0;
+	public static final int PERMISSION_COARSE_LOCATION = 1;
+	public static final int PERMISSION_VIBRATE = 2;
+	public static final int PERMISSION_WAKE_LOCK = 3;
+	public static final int PERMISSION_INTERNET = 4;
+	
+	public static boolean [] mPermissionList = new boolean [5];
+	
 	abstract static class AsyncTaskCallback {
 		abstract void onPostExecute();
 	}
@@ -47,6 +59,7 @@ public class Utility {
 	public static void sendMessageAsync(Context context, String data) {
 		sendMessageAsync(context, data, null);
 	}
+
 	public static void sendMessageAsync(Context context, String data, final AsyncTaskCallback callback) {
 		new AsyncTask<Object, Integer, Void>() {
 			@Override
@@ -63,6 +76,8 @@ public class Utility {
 	}
 
 	public static void sendMessage(Context context, String data) {
+		if (!hasPermission(PERMISSION_INTERNET))
+			return;
 		try {
 			URL url = new URL("https://gcm-http.googleapis.com/gcm/send");
 			HttpsURLConnection urlConnection = (HttpsURLConnection) url.openConnection();
@@ -231,5 +246,40 @@ public class Utility {
 		Notification notification = builder.build();
 
 	    nm.notify(0, notification);
+	}
+
+	public static void checkSelfAllPermissions(Context context) {
+		int permissionCheck;
+		for (int i = 0; i < 5; i++)
+			mPermissionList[i] = false;
+		
+		permissionCheck = ContextCompat.checkSelfPermission(context,
+	        Manifest.permission.ACCESS_FINE_LOCATION);
+		if (permissionCheck == PackageManager.PERMISSION_GRANTED)
+			mPermissionList[PERMISSION_FINE_LOCATION] = true;
+
+		permissionCheck = ContextCompat.checkSelfPermission(context,
+	        Manifest.permission.ACCESS_COARSE_LOCATION);
+		if (permissionCheck == PackageManager.PERMISSION_GRANTED)
+			mPermissionList[PERMISSION_COARSE_LOCATION] = true;
+
+		permissionCheck = ContextCompat.checkSelfPermission(context,
+	        Manifest.permission.VIBRATE);
+		if (permissionCheck == PackageManager.PERMISSION_GRANTED)
+			mPermissionList[PERMISSION_VIBRATE] = true;
+
+		permissionCheck = ContextCompat.checkSelfPermission(context,
+	        Manifest.permission.INTERNET);
+		if (permissionCheck == PackageManager.PERMISSION_GRANTED)
+			mPermissionList[PERMISSION_INTERNET] = true;
+
+		permissionCheck = ContextCompat.checkSelfPermission(context,
+	        Manifest.permission.WAKE_LOCK);
+		if (permissionCheck == PackageManager.PERMISSION_GRANTED)
+			mPermissionList[PERMISSION_WAKE_LOCK] = true;
+	}
+	
+	public static boolean hasPermission(int permission) {
+		return mPermissionList[permission];
 	}
 }

@@ -24,6 +24,7 @@
 -keep class com.google.android.gms.gcm.GcmReceiver
 
 
+
 -dontwarn android.content.pm.PackageInstaller
 -dontwarn android.content.pm.PackageInstaller$SessionInfo
 -dontwarn android.content.pm.PackageManager
@@ -35,7 +36,22 @@
 -dontwarn com.google.android.gms.common.api.zzm
 -dontwarn com.google.android.gms.common.api.zzn
 -dontwarn com.google.android.gms.common.api.zzn$zza
+-dontwarn com.google.android.gms.common.api.zzw$zza
+-dontwarn com.google.android.gms.analytics.internal.zzam
+-dontwarn com.google.android.gms.analytics.internal.zzj
+-dontwarn com.google.android.gms.internal.zzac
+-dontwarn com.google.android.gms.internal.zzqj
+-dontwarn com.google.android.gms.internal.zzt
+-dontwarn com.google.android.gms.internal.zzw
+-dontwarn com.google.android.gms.internal.zzw$zza
+-dontwarn com.google.android.gms.internal.zzx
+-dontwarn com.google.android.gms.internal.zzy
+-dontwarn com.google.android.gms.internal.zzz
+-dontwarn com.google.android.gms.tagmanager.zzby
+-dontwarn com.google.android.gms.tagmanager.zzcx
+-dontwarn com.google.android.gms.common.GooglePlayServicesUtil
 -dontwarn com.google.android.gms.gcm.GcmReceiver
+-dontwarn com.google.android.gms.gcm.zza
 
 # proguard settings from google-play-services_lib
 -keep class * extends java.util.ListResourceBundle {

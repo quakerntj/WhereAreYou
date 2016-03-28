@@ -7,6 +7,7 @@ import java.util.ArrayList;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import android.Manifest;
 import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.AlertDialog;
@@ -22,6 +23,7 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Message;
+import android.support.v4.content.ContextCompat;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -118,6 +120,8 @@ public class WRUActivity extends Activity {
 		SharedPreferences sp = getSharedPreferences(Utility.SP_WRU_ME, Context.MODE_PRIVATE);
 		mPreciseChecked = sp.getBoolean(Utility.SP_PRECISE_CHECKED, true);
 		mTrackChecked = sp.getBoolean(Utility.SP_TRACK_CHECKED, false);
+
+		Utility.checkSelfAllPermissions(this);
 	}
 
 	private boolean checkPlayServices() {

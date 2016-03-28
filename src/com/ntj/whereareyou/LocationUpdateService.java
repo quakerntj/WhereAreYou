@@ -42,6 +42,7 @@ public class LocationUpdateService extends Service implements Handler.Callback, 
 	private String mReturnAddress = null;
 	private int mPrecise = 1;
 	private int mTrack = 1;
+	private boolean mCancel = false; 
 	private Location mLocation = null;
 	private Location mNetworkLocation = null;
 	private int mReportCounts = 0;
@@ -142,8 +143,10 @@ public class LocationUpdateService extends Service implements Handler.Callback, 
 			}
 			return true;
 		case MSG_GET_LOCATION:
-			locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 1, 4, this);
-			locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 1, 4, this);
+			if (Utility.hasPermission(Utility.PERMISSION_FINE_LOCATION))
+				locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 1, 4, this);
+			if (Utility.hasPermission(Utility.PERMISSION_COARSE_LOCATION))
+				locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 1, 4, this);
 			mHandler.sendEmptyMessageDelayed(MSG_STOP_SELF, STOP_SELF_DELAY);
 			return true;
 		case MSG_STOP_SELF:
@@ -218,6 +221,14 @@ public class LocationUpdateService extends Service implements Handler.Callback, 
 	@Override
     public int onStartCommand(Intent intent, int flags, int startId) {
 		super.onStartCommand(intent, flags, startId);
+		Utility.checkSelfAllPermissions(this);
+		if (!Utility.hasPermission(Utility.PERMISSION_COARSE_LOCATION) &&
+				!Utility.hasPermission(Utility.PERMISSION_FINE_LOCATION)) {
+			if (mHandler != null)
+				mHandler.sendEmptyMessage(MSG_STOP_SELF);
+			return START_NOT_STICKY;
+		}
+
 		PowerManager pm = (PowerManager) getSystemService(Context.POWER_SERVICE);
 
 		if (DEBUG) Log.d(TAG, "Service has received start id " + startId + ": " + intent);
@@ -225,6 +236,14 @@ public class LocationUpdateService extends Service implements Handler.Callback, 
 		if (mReturnAddress == null || mReturnAddress.isEmpty()) {
 			Log.e(TAG, "Lack return address");
 			return START_NOT_STICKY;
+		}
+
+		mCancel = intent.getBooleanExtra("cancel", false);
+		if (mCancel) {
+			if (mHandler != null)
+				mHandler.sendEmptyMessage(MSG_STOP_SELF);
+			else
+				return START_NOT_STICKY;
 		}
 
 		mPrecise = intent.getIntExtra("precise", 10);
@@ -243,10 +262,8 @@ public class LocationUpdateService extends Service implements Handler.Callback, 
 		mReceiver = new MyReceiver();
 		IntentFilter filter = new IntentFilter(Utility.ACTION_STOP_BACKGROUND);
 		registerReceiver(mReceiver, filter);
-		
-		// We want this service to continue running until it is explicitly
-        // stopped, so return sticky.
-        synchronized (mLock) {
+
+		synchronized (mLock) {
         	if (mThread != null)
         		return START_NOT_STICKY;
     		mThread = new HandlerThread("H1");
@@ -257,12 +274,16 @@ public class LocationUpdateService extends Service implements Handler.Callback, 
     		mHandler.sendEmptyMessage(MSG_GET_LOCATION);
 
     		// Need keep wake until the location is updated.
-    		mWakelock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "WRU");
-    		mWakelock.acquire();
+    		if (Utility.hasPermission(Utility.PERMISSION_WAKE_LOCK)) {
+	    		mWakelock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "WRU");
+	    		mWakelock.acquire();
+    		}
 
     		doReportStart();
         }
-        return START_NOT_STICKY;
+		// We want this service to continue running until it is explicitly
+        // stopped, so return sticky.
+        return START_STICKY;
     }
 
 	@Override
@@ -282,9 +303,11 @@ public class LocationUpdateService extends Service implements Handler.Callback, 
     		if (mThread != null)
     			mThread.quit();
 			mThread = null;
-			if (mWakelock != null)
-				mWakelock.release();
-			mWakelock = null;
+			if (Utility.hasPermission(Utility.PERMISSION_WAKE_LOCK)) {
+				if (mWakelock != null)
+					mWakelock.release();
+				mWakelock = null;
+			}
         }
 	}
 }

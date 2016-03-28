@@ -2,7 +2,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
 	package="com.ntj.whereareyou"
 	android:versionCode="5"
-	android:versionName="2.7" >
+	android:versionName="2.8" >
 
 	<uses-sdk
 		android:minSdkVersion="17"
@@ -15,7 +15,6 @@
 	<uses-permission android:name="android.permission.WAKE_LOCK"/>
 	<uses-permission android:name="com.google.android.c2dm.permission.RECEIVE"/>
 	<uses-permission android:name="com.ntj.whereareyou.permission.C2D_MESSAGE"/>
-	<permission android:name="com.ntj.whereareyou.permission.C2D_MESSAGE" android:protectionLevel="signature"></permission>
 
 	<application
 		android:allowBackup="true"
@@ -42,6 +41,15 @@
                 <category android:name="com.ntj.whereareyou" />
             </intent-filter>
         </receiver>
+		<receiver
+			android:name=".StopTargetReceiver"
+			android:exported="false">
+			<intent-filter>
+				<action android:name="com.ntj.whereareyou.ACTION_STOP_LOCATE_TAGET" />
+				<category android:name="com.ntj.whereareyou" />
+			</intent-filter>
+		</receiver>
+            	
         <service
             android:name="com.ntj.whereareyou.MyGcmListenerService"
             android:exported="false" >
